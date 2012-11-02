@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 3 (Build 170) --->
-<!--- Last Updated: 2011-12-14 --->
+<!--- 2.5 Beta 3 (Build 171) --->
+<!--- Last Updated: 2012-01-25 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -678,7 +678,7 @@
 			<cfif StructKeyExists(rfields[ii].Relation,"join-table")>
 				<cfset subdatum.subadvsql = StructNew()>
 				<cfset subdatum.subadvsql.WHERE = "#escape( rfields[ii].Relation['join-table'] & '.' & rfields[ii].Relation['join-table-field-remote'] )# = #escape( rfields[ii].Relation['table'] & '.' & rfields[ii].Relation['remote-table-join-field'] )#">
-				<cfset subdatum.data[rfields[ii].Relation["local-table-join-field"]] = qRecord[rfields[ii].Relation["join-table-field-local"]][1]>
+				<cfset subdatum.data[rfields[ii].Relation["local-table-join-field"]] = arguments.qRecord[rfields[ii].Relation["join-table-field-local"]][1]>
 				<cfset subdatum.advsql.WHERE = ArrayNew(1)>
 				<cfset ArrayAppend(subdatum.advsql.WHERE,"EXISTS (")>
 				<cfset ArrayAppend(subdatum.advsql.WHERE,getRecordsSQL(tablename=rfields[ii].Relation["join-table"],data=subdatum.data,advsql=subdatum.subadvsql,isInExists=true))>
@@ -1070,7 +1070,13 @@
 		<cfset throwDMError("The data argument of getRecord must contain at least one field from the #arguments.tablename# table. To get all records, use the getRecords method.","NeedWhereFields","(data passed in: #DataString#)")>
 	</cfif>
 	
-	<cfreturn getRecords(tablename=arguments.tablename,data=in,fieldlist=arguments.fieldlist,maxrows=1)>
+	<cfif ArrayLen(pkfields)>
+		<cfset Arguments.orderBy = pkfields[1].ColumnName>
+	</cfif>
+	<cfset arguments.data = in>
+	<cfset arguments.maxrows = 1>
+	
+	<cfreturn getRecords(argumentcollection=arguments)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no" hint="I get a recordset based on the data given.">
@@ -1334,6 +1340,7 @@
 	<cfset var numcols = 0>
 	<cfset var ii = 0>
 	<cfset var aFields = variables.tables[arguments.tablename]>
+	<cfset var dbfields = "">
 	<cfset var temp = "">
 	<cfset var fields = "">
 	
@@ -1366,7 +1373,7 @@
 		<cfset numcols = numcols + 1>
 	<cfelse>
 		<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
-			<cfif ( NOT ListFindNoCase(fields,aFields[ii]["ColumnName"]) ) AND isFieldInSelect(aFields[ii],arguments.fieldlist,arguments.maxrows)>
+			<cfif Len(aFields[ii]["ColumnName"]) AND ( NOT ListFindNoCase(fields,aFields[ii]["ColumnName"]) ) AND isFieldInSelect(aFields[ii],arguments.fieldlist,arguments.maxrows)>
 				<cfif numcols GT 0><cfset ArrayAppend(sqlarray,",")></cfif>
 				<cfset numcols = numcols + 1>
 				<cfset fields = ListAppend(fields,aFields[ii]["ColumnName"])>
@@ -1400,8 +1407,9 @@
 	</cfif>
 	
 	<!--- Make sure at least one field is retrieved --->
-	<cfif numcols EQ 0>
-		<cfset throwDMError("At least one valid field must be retrieved from the #arguments.tablename# table (actual fields in table are: #getDBFieldList(arguments.tablename)#) (requested fields: #arguments.fieldlist#).","NeedSelectFields")>
+	<cfif numcols EQ 0 AND NOT Len(fields)>
+		<cfset dbfields = getDBFieldList(arguments.tablename)>
+		<cfset throwDMError("At least one valid field must be retrieved from the #arguments.tablename# table (actual fields in table are: #dbfields#) (requested fields: #arguments.fieldlist#).","NeedSelectFields")>
 	</cfif>
 	
 	<cfreturn sqlarray>
@@ -1489,7 +1497,7 @@
 				<cfset ArrayAppend(sqlarray,getFieldWhereSQL(tablename=arguments.tablename,field=fields[ii].ColumnName,value=in[fields[ii].ColumnName],tablealias=arguments.tablealias))>
 			<cfelseif StructKeyExists(in,fields[ii].ColumnName) AND isSimpleValue(in[fields[ii].ColumnName]) AND NOT Len(Trim(in[fields[ii].ColumnName]))>
 				<cfset ArrayAppend(sqlarray,"#joiner#		#escape(arguments.tablealias & '.' & fields[ii].ColumnName)# IS NULL")>
-			<cfelseif StructKeyExists(fields[ii],"Special") AND fields[ii].Special EQ "DeletionMark">
+			<cfelseif StructKeyExists(fields[ii],"Special") AND fields[ii].Special EQ "DeletionMark" AND NOT ( StructKeyExists(Arguments,"WithDeletedRecords") AND Arguments.WithDeletedRecords IS true )>
 				<!--- Make sure not to get records that have been logically deleted --->
 				<cfif fields[ii].CF_DataType EQ "CF_SQL_BIT">
 					<cfset ArrayAppend(sqlarray,"#joiner#		(#escape(arguments.tablealias & '.' & fields[ii].ColumnName)# = #getBooleanSqlValue(0)# OR #escape(arguments.tablealias & '.' & fields[ii].ColumnName)# IS NULL)")>
@@ -4204,7 +4212,7 @@
 	<cfreturn result>
 </cffunction>
 
-<cffunction name="getFTableFields" access="private" returntype="struct" output="no">
+<cffunction name="getFTableFields" access="public" returntype="struct" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	
 	<cfset var aFields = 0>
@@ -5839,14 +5847,16 @@
 		<cfset sData[Arguments.NewField] = "">
 		<cfset qRecords = getRecords(tablename=Arguments.tablename,data=StructCopy(sData),fieldlist=ListAppend(pklist,Arguments.OldField))>
 		
-		<cfoutput query="qRecords">
-			<cfset sData = StructNew()>
-			<cfloop list="#pklist#" index="key">
-				<cfset sData[key] = qRecords[key][CurrentRow]>
-			</cfloop>
-			<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
-			<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
-		</cfoutput>
+		<cfif ListFindNoCase(qRecords.ColumnList,Arguments.OldField)>
+			<cfoutput query="qRecords">
+				<cfset sData = StructNew()>
+				<cfloop list="#pklist#" index="key">
+					<cfset sData[key] = qRecords[key][CurrentRow]>
+				</cfloop>
+				<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
+				<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
+			</cfoutput>
+		</cfif>
 	</cfif>
 	
 </cffunction>
