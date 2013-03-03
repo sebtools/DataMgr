@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 (Build 171) --->
-<!--- Last Updated: 2012-01-25 --->
+<!--- 2.5 (Build 172) --->
+<!--- Last Updated: 2013-03-03 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -1091,6 +1091,7 @@
 	<cfargument name="function" type="string" default="" hint="A function to run against the results.">
 	<cfargument name="FunctionAlias" type="string" required="false" hint="An alias for the column returned by a function (only if function argument is used).">
 	<cfargument name="Distinct" type="boolean" default="false">
+	<cfargument name="WithDeletedRecords" type="boolean" default="false">
 	
 	<cfset var qRecords = 0><!--- The recordset to return --->
 	<cfset var aSQL = getRecordsSQL(argumentCollection=arguments)>
@@ -1107,6 +1108,7 @@
 		</cfif>
 	</cfinvoke>
 	
+	<!---<cfset qRecords = applyConcatRelations(arguments.tablename,qRecords)>---><!--- Not sufficiently tested yet --->
 	<cfset qRecords = applyListRelations(arguments.tablename,qRecords)>
 	
 	<!--- Manage offset --->
@@ -1624,6 +1626,8 @@
 	
 	<cfif isNumeric(arguments.field)>
 		<cfset aSQL = arguments.field>
+	<cfelseif NOT Len(Trim(arguments.field))>
+		<cfset ArrayAppend(aSQL,"''")>
 	<cfelse>
 		<cfset sField = getField(arguments.tablename,arguments.field)>
 		
@@ -1672,11 +1676,19 @@
 			<cfcase value="list">
 				<cfif StructKeyExists(sField.Relation,"join-table")>
 					<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["local-table-join-field"],tablealias=arguments.tablealias,useFieldAlias=false)>
-					<cfset sField2 = getField(arguments.tablename,sField.Relation["local-table-join-field"])>
+					<cfif Len(sField.Relation["local-table-join-field"])>
+						<cfset sField2 = getField(arguments.tablename,sField.Relation["local-table-join-field"])>
+					<cfelse>
+						<cfset sField2 = StructNew()>
+					</cfif>
 					<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["local-table-join-field"] )> --->
 				<cfelse>
 					<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["join-field-local"],tablealias=arguments.tablealias,useFieldAlias=false)>
-					<cfset sField2 = getField(arguments.tablename,sField.Relation["join-field-local"])>
+					<cfif Len(sField.Relation["join-field-local"])>
+						<cfset sField2 = getField(arguments.tablename,sField.Relation["join-field-local"])>
+					<cfelse>
+						<cfset sField2 = StructNew()>
+					</cfif>
 					<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["join-field-local"] )> --->
 				</cfif>
 				<cfset temp = readableSQL(temp)>
@@ -3110,6 +3122,15 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="numRecords" access="public" returntype="numeric" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
+	
+	<cfset var qRecords = getRecords(tablename=arguments.tablename,data=arguments.data,function="count",FunctionAlias="NumRecords")>
+	
+	<cfreturn Val(qRecords.NumRecords)>
+</cffunction>
+
 <cffunction name="queryparam" access="public" returntype="struct" output="no" hint="I run the given SQL.">
 	<cfargument name="cfsqltype" type="string" required="no">
 	<cfargument name="value" type="any" required="yes">
@@ -3943,6 +3964,43 @@
 	</cfif>
 	
 	<cfreturn sArgs>
+</cffunction>
+
+<cffunction name="applyConcatRelations" access="public" returntype="query" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="query" type="query" required="yes">
+
+	<cfset var qRecords = arguments.query>
+	<cfset var rfields = getRelationFields(arguments.tablename)><!--- relation fields in table --->
+	<cfset var i = 0><!--- Generic counter --->
+	<cfset var hasConcats = false>
+	<cfset var qRelationList = 0>
+	<cfset var temp = 0>
+	
+	<!--- Check for list values in recordset --->
+	<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
+		<cfif ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName)>
+			<cfif rfields[i].Relation.type EQ "concat">
+				<cfset hasConcats = true>
+				<cfbreak>
+			</cfif>
+		</cfif>
+	</cfloop>
+	
+	<!--- Get list values --->
+	<cfif hasConcats>
+		<cfloop query="qRecords">
+			<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
+				<cfif rfields[i].Relation["type"] EQ "concat" AND ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName) AND Len(rfields[i].relation.delimiter)>
+					<cfif ReFindNoCase("^(#rfields[i].relation.delimiter#\s?)+$",qRecords[rfields[i].ColumnName][CurrentRow])>
+						<cfset QuerySetCell(qRecords, rfields[i].ColumnName, "", CurrentRow)>
+					</cfif>
+				</cfif>
+			</cfloop>
+		</cfloop>
+	</cfif>
+	
+	<cfreturn qRecords>
 </cffunction>
 
 <cffunction name="applyListRelations" access="public" returntype="query" output="no">
