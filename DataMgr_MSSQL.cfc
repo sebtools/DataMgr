@@ -992,18 +992,14 @@
 	<cfreturn result>
 </cffunction>
 
-<cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
+<cffunction name="hasIndex" access="public" returntype="boolean" output="false" hint="">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="indexname" type="string" required="yes">
 	
 	<cfset var result = false>
-	<cfset var qIndexes = RunSQL("
-	SELECT	1
-	FROM	sysindexes
-	WHERE	name = '#arguments.indexname#'
-	")>
+	<cfset var qIndexes = RunSQL("EXEC sys.sp_helpindex @objname = N'#arguments.tablename#'")>
 	
-	<cfif qIndexes.RecordCount>
+	<cfif qIndexes.RecordCount AND ListFindNoCase(ValueList(qIndexes.index_name),Arguments.indexname)>
 		<cfset result = true>
 	</cfif>
 	
