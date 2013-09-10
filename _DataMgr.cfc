@@ -4,7 +4,7 @@
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
 
-<cfset variables.DataMgrVersion = "2.5 Beta 3 Dev 2">
+<cfset variables.DataMgrVersion = "2.5">
 <cfset variables.DefaultDatasource = getDefaultDatasource()>
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
@@ -15,6 +15,7 @@
 	<cfargument name="SmartCache" type="boolean" default="false">
 	<cfargument name="SpecialDateType" type="string" default="CF">
 	<cfargument name="XmlData" type="string" required="no">
+	<cfargument name="logfile" type="string" required="no">
 	
 	<cfset var me = 0>
 	
@@ -26,6 +27,10 @@
 	<cfif StructKeyExists(arguments,"username") AND StructKeyExists(arguments,"password")>
 		<cfset variables.username = arguments.username>
 		<cfset variables.password = arguments.password>
+	</cfif>
+	
+	<cfif StructKeyExists(arguments,"logfile") AND Len(Arguments.logfile)>
+		<cfset variables.logfile = arguments.logfile>
 	</cfif>
 	
 	<cfif StructKeyExists(arguments,"defaultdatabase")>
@@ -3238,6 +3243,8 @@
 		<cfelse>
 			<cfquery name="qQuery" datasource="#variables.datasource#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
 		</cfif>
+		
+		<cfset logSQL(arguments.sql)>
 	</cfif>
 	
 	<cfif IsDefined("qQuery") AND isQuery(qQuery)>
@@ -3262,6 +3269,8 @@
 				<cfquery name="qQuery" datasource="#variables.datasource#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
 			</cfif>
 		</cfif>
+		
+		<cfset logSQL(aSQL)>
 	<cfcatch>
 		<cfthrow message="#CFCATCH.Message#" detail="#CFCATCH.detail#" extendedinfo="#readableSQL(aSQL)#">
 	</cfcatch>
@@ -3269,6 +3278,30 @@
 	
 	<cfif IsDefined("qQuery") AND isQuery(qQuery)>
 		<cfreturn qQuery>
+	</cfif>
+	
+</cffunction>
+
+<cffunction name="logSQL" access="private" returntype="void" output="no">
+	<cfargument name="sql" type="any" required="yes">
+	
+	<cfset var text = "">
+	
+	<cfif StructKeyExists(Variables,"logfile") AND Len(Variables.logfile)>
+		<cfdump var="#Arguments.sql#">
+		<cfabort>
+		<cfif isSimpleValue(Arguments.sql) AND Len(Arguments.sql)>
+			<cfset text = Arguments.sql>
+		<cfelseif isArray(Arguments.sql) AND ArrayLen(Arguments.sql)>
+			<cfset text = readableSQL(Arguments.sql)>
+		</cfif>
+		
+		<cfif Len(text)>
+			<cflog file="#Variables.logfile#" text="#text#">
+		</cfif>
+	<cfelse>
+		NOPE
+		<cfabort>
 	</cfif>
 	
 </cffunction>
@@ -3791,6 +3824,15 @@
 	</cfif>
 	
 	<cfset in = getRelationValues(arguments.tablename,in)>
+	
+	<!--- Restrict data to fieldlist --->
+	<cfif Len(Trim(arguments.fieldlist))>
+		<cfloop item="ii" collection="#in#">
+			<cfif NOT ListFindNoCase(arguments.fieldlist,ii)>
+				<cfset StructDelete(in,ii)>
+			</cfif>
+		</cfloop>
+	</cfif>
 	
 	<!--- Throw exception on any attempt to update a table with no updateable fields --->
 	<cfif NOT ArrayLen(fields)>
@@ -5759,7 +5801,7 @@
 	
 </cffunction>
 
-<cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
+<cffunction name="hasIndex" access="public" returntype="boolean" output="false" hint="">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="indexname" type="string" required="yes">
 	
