@@ -1,10 +1,10 @@
-<!--- 2.5 (Build 172) --->
-<!--- Last Updated: 2013-03-03 --->
+<!--- 2.5.1 (Build 173) --->
+<!--- Last Updated: 2013-09-16 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
 
-<cfset variables.DataMgrVersion = "2.5">
+<cfset variables.DataMgrVersion = "2.5.1">
 <cfset variables.DefaultDatasource = getDefaultDatasource()>
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
@@ -1870,6 +1870,12 @@
 	<cfset var hasOtherFieldVal = false>
 	<cfset var NegativeOperators = "<>,NOT LIKE,NOT IN">
 	<cfset var isNegativeOperator = false>
+	<cfset var isAll = false>
+	
+	<cfif arguments.operator EQ "All">
+		<cfset isAll = true>
+		<cfset arguments.operator = "=">
+	</cfif>
 	
 	<cfif NOT ( ListFindNoCase(operators,arguments.operator) OR ListFindNoCase(operators_cf,arguments.operator) )>
 		<cfset throwDMError("#arguments.operator# is not a valid operator. Valid operators are: #operators#,#operators_cf#","InvalidOperator")>
@@ -1954,10 +1960,16 @@
 				)
 			)>
 			
-			<cfset sArgs.isInExists = true>
+			<cfif isAll>
+				<cfset sArgs.function = "count">
+				
+			<cfelse>
+				<cfset sArgs.isInExists = true>
+				<cfset sArgs.fieldlist = sField.Relation["field"]>
+			</cfif>
+			
 			<cfset sArgs.noorder = true>
 			<cfset sArgs.tablename = sField.Relation["table"]>
-			<cfset sArgs.fieldlist = sField.Relation["field"]>
 			<cfset sArgs.maxrows = 1>
 			<cfset sArgs.join = StructNew()>
 			<!--- <cfset sArgs.filters = ArrayNew(1)> --->
@@ -2001,9 +2013,15 @@
 			<cfif isNegativeOperator OR NOT Len(arguments.value)>
 				<cfset ArrayAppend(aSQL," NOT ")>
 			</cfif>
-			<cfset ArrayAppend(aSQL,"EXISTS (")>
+			<cfif NOT isAll>
+				<cfset ArrayAppend(aSQL,"EXISTS")>
+			</cfif>
+			<cfset ArrayAppend(aSQL," (")>
 				<cfset ArrayAppend(aSQL,getRecordsSQL(argumentCollection=sArgs))>
 			<cfset ArrayAppend(aSQL,"		)")>
+			<cfif isAll>
+				<cfset ArrayAppend(aSQL," = #ListLen(fieldval)#")>
+			</cfif>
 			<cfif hasOtherFieldVal>
 				<cfset ArrayAppend(aSQL,")")>
 			</cfif>
@@ -5335,18 +5353,28 @@
 					<cfset rtablePKeys = getUpdateableFields(relates[i].Relation["table"])>
 				</cfif>
 				
-				<cfif Len(relates[i].Relation["join-table-field-local"])>
-					<cfset fieldPK = relates[i].Relation["join-table-field-local"]>
-					<cfif relates[i].Relation["join-table-field-local"] NEQ getPrimaryKeyFieldName(arguments.tablename)>
+				<!--- Get correct value for local table value --->
+				<cfif Len(relates[i].Relation["local-table-join-field"])>
+					<cfset fieldPK = relates[i].Relation["local-table-join-field"]>
+					<cfif relates[i].Relation["local-table-join-field"] NEQ getPrimaryKeyFieldName(arguments.tablename)>
 						<cfset temp = StructNew()>
 						<cfset temp[getPrimaryKeyFieldName(arguments.tablename)] = arguments.pkval>
 						<cfset qRecord = getRecords(tablename=arguments.tablename,data=temp,fieldlist=fieldPK)>
 						<cfset arguments.pkval = qRecord[fieldPK][1]>
 					</cfif>
+					<cfif Len(relates[i].Relation["join-table-field-local"])>
+						<cfset fieldPK = relates[i].Relation["join-table-field-local"]>
+					</cfif>
+				</cfif>
+				
+				<!--- Set field for join-table that points to local table --->
+				<cfif Len(relates[i].Relation["join-table-field-local"])>
+					<cfset fieldPK = relates[i].Relation["join-table-field-local"]>
 				<cfelse>
 					<cfset fieldPK = getPrimaryKeyFieldName(arguments.tablename)>
 				</cfif>
 				
+				<!--- Set field for join-table that points to remote table --->
 				<cfif Len(relates[i].Relation["join-table-field-remote"])>
 					<cfset fieldMulti = relates[i].Relation["join-table-field-remote"]>
 				<cfelse>
