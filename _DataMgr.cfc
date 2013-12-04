@@ -1,10 +1,10 @@
-<!--- 2.5.1 (Build 173) --->
-<!--- Last Updated: 2013-09-16 --->
+<!--- 2.5.2 (Build 174) --->
+<!--- Last Updated: 2013-12-04 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
 
-<cfset variables.DataMgrVersion = "2.5.1">
+<cfset variables.DataMgrVersion = "2.5.2">
 <cfset variables.DefaultDatasource = getDefaultDatasource()>
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
@@ -3062,6 +3062,13 @@
 							FailedSQL = ListAppend(FailedSQL,exception.Detail,";");
 						}
 					}
+					if (
+							StructKeyExists(MyTables[mytable][i],"OldField")
+						AND	Len(MyTables[mytable][i]["OldField"])
+						AND	NOT StructKeyExists(MyTables[mytable][i],"CF_DataType")
+					) {
+						updateFromOldField(tablename=mytable,NewField=MyTables[mytable][i].ColumnName,OldField=MyTables[mytable][i].OldField,dbfields=fieldlist);
+					}
 				}
 			}
 		}
@@ -3147,7 +3154,7 @@
 
 <cffunction name="numRecords" access="public" returntype="numeric" output="no">
 	<cfargument name="tablename" type="string" required="yes">
-	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
+	<cfargument name="data" type="struct" default="#StructNew()#" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
 	
 	<cfset var qRecords = getRecords(tablename=arguments.tablename,data=arguments.data,function="count",FunctionAlias="NumRecords")>
 	
@@ -5973,17 +5980,21 @@
 		<cfset pklist = getPrimaryKeyFieldNames(Arguments.tablename)>
 		<cfset sData = StructNew()>
 		<cfset sData[Arguments.NewField] = "">
-		<cfset qRecords = getRecords(tablename=Arguments.tablename,data=StructCopy(sData),fieldlist=ListAppend(pklist,Arguments.OldField))>
 		
-		<cfif ListFindNoCase(qRecords.ColumnList,Arguments.OldField)>
-			<cfoutput query="qRecords">
-				<cfset sData = StructNew()>
-				<cfloop list="#pklist#" index="key">
-					<cfset sData[key] = qRecords[key][CurrentRow]>
-				</cfloop>
-				<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
-				<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
-			</cfoutput>
+		<!--- Make sure all records have no value for new field (which is to say, new field doesn't have a value for any record yet ) - Makes function idempotent --->
+		<cfif numRecords(tablename=Arguments.tablename) EQ numRecords(tablename=Arguments.tablename,data=StructCopy(sData))>
+			<cfset qRecords = getRecords(tablename=Arguments.tablename,data=StructCopy(sData),fieldlist=ListAppend(pklist,Arguments.OldField))>
+			
+			<cfif ListFindNoCase(qRecords.ColumnList,Arguments.OldField)>
+				<cfoutput query="qRecords">
+					<cfset sData = StructNew()>
+					<cfloop list="#pklist#" index="key">
+						<cfset sData[key] = qRecords[key][CurrentRow]>
+					</cfloop>
+					<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
+					<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
+				</cfoutput>
+			</cfif>
 		</cfif>
 	</cfif>
 	
