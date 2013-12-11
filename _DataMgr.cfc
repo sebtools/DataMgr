@@ -1,10 +1,10 @@
-<!--- 2.5.2 (Build 174) --->
-<!--- Last Updated: 2013-12-04 --->
+<!--- 2.5.3 (Build 175) --->
+<!--- Last Updated: 2013-12-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
 
-<cfset variables.DataMgrVersion = "2.5.2">
+<cfset variables.DataMgrVersion = "2.5.3">
 <cfset variables.DefaultDatasource = getDefaultDatasource()>
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
@@ -2808,16 +2808,7 @@
 		}
 		</cfscript>
 		
-		<cfif StructKeyExists(variables,"getDBFieldLists")>
-			<cfset sDBTableFields = getDBFieldLists(tables)>
-			<cfset dbtables = StructKeyList(sDBTableFields)>
-		<cfelse>
-			<cftry>
-				<cfset dbtables = getDatabaseTablesCache()>
-			<cfcatch>
-			</cfcatch>
-			</cftry>
-		</cfif>
+		<cfset dbtables = getDatabaseTablesCache()>
 		
 		<cfscript>
 		//  Loop over all root elements in XML
@@ -3080,8 +3071,13 @@
 				} else {
 					mytable = aJoinRelations[i].sField.Relation["join-table"];
 				}
-				
-				if ( NOT ( StructKeyExists(sJoinTables,mytable) OR ListFindNoCase(tables,mytable) OR ListFindNoCase(dbtables,mytable) ) ) {
+				if (
+					NOT (
+								StructKeyExists(sJoinTables,mytable)
+							OR	ListFindNoCase(tables,mytable)
+							OR	ListFindNoCase(dbtables,mytable)
+						)
+				) {
 					sRelation = expandRelationStruct(aJoinRelations[i].sField.Relation,aJoinRelations[i].sField);
 					if (
 							Len(Trim(sRelation["local-table-join-field"]))
