@@ -2351,6 +2351,7 @@
 	<cfargument name="OnExists" type="string" default="insert" hint="The action to take if a record with the given values exists. Possible values: insert (inserts another record), error (throws an error), update (updates the matching record), skip (performs no action), save (updates only for matching primary key)).">
 	<cfargument name="fieldlist" type="string" default="" hint="A list of insertable fields. If left blank, any field can be inserted.">
 	<cfargument name="truncate" type="boolean" default="false" hint="Should the field values be automatically truncated to fit in the available space for each field?">
+	<cfargument name="checkfields" type="string" default="" hint="Only for OnExists=update. A list of fields to use to check for existing records (default to checking all updateable fields for update).">
 	
 	<cfset var OnExistsValues = "insert,error,update,skip"><!--- possible values for OnExists argument --->
 	<cfset var ii = 0><!--- generic counter --->
@@ -2361,14 +2362,25 @@
 	<cfset var qCheckKey = 0><!--- Used to get primary key --->
 	<cfset var sqlarray = ArrayNew(1)>
 	<cfset var sMatchingKeys = 0>
+	<cfset var sCheckData = 0>
 	
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
 	</cfif>
 	
+	<cfset sCheckData = StructCopy(in)>
+	
+	<cfif ListLen(arguments.checkfields)>
+		<cfloop item="ii" collection="#sCheckData#">
+			<cfif NOT ListFindNoCase(arguments.checkfields,ii)>
+				<cfset StructDelete(sCheckData,ii)>
+			</cfif>
+		</cfloop>
+	</cfif>
+	
 	<!--- Check for existing records if an action other than insert should be take if one exists --->
 	<cfif arguments.OnExists NEQ "insert">
-		<cfset sMatchingKeys = getMatchingRecordKeys(tablename=arguments.tablename,data=arguments.data,pksonly=(arguments.OnExists EQ "save"))>
+		<cfset sMatchingKeys = getMatchingRecordKeys(tablename=arguments.tablename,data=sCheckData,pksonly=(arguments.OnExists EQ "save"))>
 		<cfif StructCount(sMatchingKeys)>
 			<cfswitch expression="#arguments.OnExists#">
 			<cfcase value="error">
@@ -3450,8 +3462,9 @@
 	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
 	<cfargument name="fieldlist" type="string" default="" hint="A list of insertable fields. If left blank, any field can be inserted.">
 	<cfargument name="truncate" type="boolean" default="false" hint="Should the field values be automatically truncated to fit in the available space for each field?">
+	<cfargument name="checkfields" type="string" default="" hint="Only for OnExists=update. A list of fields to use to check for existing records (default to checking all updateable fields for update).">
 	
-	<cfreturn insertRecord(arguments.tablename,arguments.data,"update",arguments.fieldlist,arguments.truncate)>
+	<cfreturn insertRecord(arguments.tablename,arguments.data,"update",arguments.fieldlist,arguments.truncate,arguments.checkfields)>
 </cffunction>
 
 <cffunction name="saveRelationList" access="public" returntype="void" output="no" hint="I save a many-to-many relationship.">
@@ -4467,7 +4480,7 @@
 		
 </cffunction>
 
-<cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
+<cffunction name="cleanSQLArray" access="public" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
 	
 	<cfset var result = ArrayNew(1)>
