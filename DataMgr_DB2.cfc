@@ -1,5 +1,5 @@
-<!--- 2.5.3 (Build 175) --->
-<!--- Last Updated: 2013-12-11 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for DB2" hint="I manage data interactions with the DB2 database.">
 

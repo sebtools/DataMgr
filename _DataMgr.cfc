@@ -1,5 +1,5 @@
-<!--- 2.5.3 (Build 175) --->
-<!--- Last Updated: 2013-12-11 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -5920,7 +5920,7 @@
 	<cfreturn sResult>
 </cffunction>
 
-<cffunction name="StructKeyHasLen" access="private" returntype="numeric" output="no" hint="I check to see if the given key of the given structure exists and has a value with any length.">
+<cffunction name="StructKeyHasLen" access="private" returntype="boolean" output="no" hint="I check to see if the given key of the given structure exists and has a value with any length.">
 	<cfargument name="Struct" type="struct" required="yes">
 	<cfargument name="Key" type="string" required="yes">
 	

@@ -1,5 +1,5 @@
-<!--- 2.5.3 (Build 175) --->
-<!--- Last Updated: 2013-12-11 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the MS SQL Server database.">
 
@@ -976,6 +976,44 @@
 	</cfoutput>
 	
 	<cfreturn qIndexes>
+</cffunction>
+
+<cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
+	<cfargument name="sqlarray" type="array" required="yes">
+	
+	<cfset var aSQL = Super.cleanSQLArray(arguments.sqlarray)>
+	<cfset var sParams = StructNew()>
+	<cfset var str = "">
+	
+	<cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1">
+		<cfif isStruct(aSQL[ii]) AND StructKeyExists(aSQL[ii],"name")>
+			<cfif StructKeyExists(sParams,aSQL[ii].name)>
+				<!---  --->
+				<cfif NOT (
+						( sParams[aSQL[ii].name].CFSQLTYPE EQ aSQL[ii].CFSQLTYPE )
+					AND	( sParams[aSQL[ii].name].value EQ aSQL[ii].value )
+				)>
+					<cfset throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match.")>
+				</cfif>
+			<cfelse>
+				<cfset sParams[aSQL[ii].name] = aSQL[ii]>
+			</cfif>
+			<cfset aSQL[ii] = "@#aSQL[ii].name#">
+		</cfif>
+	</cfloop>
+	
+	<cfloop item="ii" collection="#sParams#">
+		<cfset str = "DECLARE @#ii# #getDBDataType(sParams[ii].CFSQLTYPE)#">
+		<cfif isStringType(getDBDataType(sParams[ii].CFSQLTYPE))>
+			<cfset str = "#str#(#sParams[ii].MaxLength#)">
+		</cfif>
+		<cfset str = "#str# = ">
+		<cfset ArrayPrepend(aSQL,";")>
+		<cfset ArrayPrepend(aSQL,sParams[ii])>
+		<cfset ArrayPrepend(aSQL,str)>
+	</cfloop>
+	
+	<cfreturn aSQL>
 </cffunction>
 
 <cffunction name="getInsertedIdentity" access="private" returntype="string" output="no" hint="I get the value of the identity field that was just inserted into the given table.">

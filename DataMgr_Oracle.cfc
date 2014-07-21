@@ -1,5 +1,5 @@
-<!--- 2.5.3 (Build 175) --->
-<!--- Last Updated: 2013-12-11 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Beth Bowden and Steve Bryant 2007-01-14 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database.">
 
