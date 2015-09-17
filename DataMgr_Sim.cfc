@@ -84,9 +84,9 @@
 	<cfreturn CreateSQL>
 </cffunction>
 
-<cffunction name="CreateTables" access="public" returntype="void" output="no" hint="I create any tables that I know should exist in the database but don't.">
+<cffunction name="CreateTables" access="public" returntype="string" output="no" hint="I create any tables that I know should exist in the database but don't.">
 	<cfargument name="tables" type="string" default="#variables.tables#" hint="I am a list of tables to create. If I am not provided createTables will try to create any table that has been loaded into it but does not exist in the database.">
-
+	<cfreturn Arguments.tables>
 </cffunction>
 
 <cffunction name="deleteRecord" access="public" returntype="void" output="no" hint="I delete the record with the given Primary Key(s).">
