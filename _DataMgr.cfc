@@ -248,7 +248,7 @@
 	<cfreturn result>
 </cffunction>
 
-<cffunction name="CreateTables" access="public" returntype="void" output="no" hint="I create any tables that I know should exist in the database but don't.">
+<cffunction name="CreateTables" access="public" returntype="string" output="no" hint="I create any tables that I know should exist in the database but don't.">
 	<cfargument name="tables" type="string" required="no" hint="I am a list of tables to create. If I am not provided createTables will try to create any table that has been loaded into it but does not exist in the database.">
 	<cfargument name="dbtables" type="string" required="false">
 	
@@ -257,6 +257,7 @@
 	<cfset var qTest = 0>
 	<cfset var FailedSQL = "">
 	<cfset var DBErr = "">
+	<cfset var result = "">
 	
 	<cfif NOT StructKeyExists(arguments,"tables")>
 		<cfset arguments.tables = StructKeyList(variables.tables)>
@@ -276,7 +277,8 @@
 		<cfif NOT dbtableexists(table,arguments.dbtables)>
 			<cftry>
 				<cfset createTable(table)>
-				<cfset arguments.dbtables = ListAppend(arguments.dbtables,table)> 
+				<cfset arguments.dbtables = ListAppend(arguments.dbtables,table)>
+				<cfset result = ListAppend(result,table)>
 				<cfcatch type="DataMgr">
 					<cfif Len(CFCATCH.Detail)>
 						<cfset FailedSQL = ListAppend(FailedSQL,CFCATCH.Detail,";")>
@@ -295,6 +297,7 @@
 		<cfset throwDMError("SQL Error in Creation. Verify Datasource (#chr(34)##variables.datasource##chr(34)#) is valid.","CreateFailed",FailedSQL,DBErr)>
 	</cfif>
 	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="deleteRecord" access="public" returntype="void" output="no" hint="I delete the record with the given Primary Key(s).">
@@ -545,6 +548,11 @@
 			<cfif StructKeyExists(variables,"defaultdatabase")>
 				<cfset type = variables.defaultdatabase>
 			<cfelse>
+				<cftry>
+					<cfset connection.close()>
+				<cfcatch>
+				</cfcatch>
+				</cftry>
 				<cfif cfcatch.Message CONTAINS "Permission denied">
 					<cfset throwDMError("DataMgr was unable to determine database type.","DatabaseTypeRequired","DataMgr was unable to determine database type. Please pass the database argument (second argument of init method) to DataMgr.")>
 				<cfelse>
@@ -1148,7 +1156,7 @@
 	<cfif NOT ( StructKeyExists(arguments,"isInExists") AND isBoolean(arguments.isInExists) )>
 		<cfset arguments.isInExists = false>
 	</cfif>
-	<cfif arguments.isInExists OR ( Len(arguments.function) AND NOT Len(arguments.fieldlist) )>
+	<cfif arguments.isInExists OR ( Len(arguments["function"]) AND NOT Len(arguments.fieldlist) )>
 		<cfset arguments.noorder = true>
 	</cfif>
 	<cfif NOT ( StructKeyExists(arguments,"noorder") AND isBoolean(arguments.noorder) )>
@@ -1275,7 +1283,7 @@
 		<cfloop index="ii" from="1" to="#ArrayLen(fields)#" step="1">
 			<cfif StructKeyExists(fields[ii],"Special") AND fields[ii].Special EQ "Sorter">
 				<cfif
-						( NOT Len(arguments.function) AND NOT ( StructKeyExists(arguments,"Distinct") AND arguments.Distinct IS true ) )
+						( NOT Len(arguments["function"]) AND NOT ( StructKeyExists(arguments,"Distinct") AND arguments.Distinct IS true ) )
 					OR	(
 								Len(arguments.fieldlist) EQ 0
 							OR	ListFindNoCase(arguments.fieldlist, fields[ii].ColumnName)
@@ -1305,7 +1313,7 @@
 				StructKeyExists(arguments,"sortfield")
 			AND	Len(Trim(arguments.sortfield))
 			AND	(
-						( NOT Len(arguments.function) AND NOT ( StructKeyExists(arguments,"Distinct") AND arguments.Distinct IS true ) )
+						( NOT Len(arguments["function"]) AND NOT ( StructKeyExists(arguments,"Distinct") AND arguments.Distinct IS true ) )
 					OR	(
 								Len(arguments.fieldlist) EQ 0
 							OR	ListFindNoCase(arguments.fieldlist, arguments.sortfield)
@@ -1325,7 +1333,7 @@
 			<cfset aResults = getDefaultOrderBySQL(argumentCollection=arguments)>
 		</cfif>
 	</cfif>
-	
+
 	<cfreturn aResults>
 </cffunction>
 
@@ -2775,7 +2783,7 @@
 	var sRelation = 0;
 	var sJoinTables = 0;
 	
-	var tables = "";
+	var tables_made = "";
 	var fields = StructNew();
 	var fieldlist = "";
 	//var qTest = 0;
@@ -2816,7 +2824,7 @@
 		aTableNames = XmlSearch(varXML, "//table/@name");
 		
 		for (i=1; i LTE ArrayLen(aTableNames);i=i+1) {
-			tables = ListAppend(tables,ListLast(aTableNames[i].XmlValue,"."));
+			tables_made = ListAppend(tables_made,ListLast(aTableNames[i].XmlValue,"."));
 		}
 		</cfscript>
 		
@@ -2839,7 +2847,7 @@
 				//table name
 				thisTableName = ListLast(xTable.XmlAttributes["name"],".");
 				//Add table to list
-				tables = ListAppend(tables,thisTableName);
+				tables_made = ListAppend(tables_made,thisTableName);
 				//introspect table
 				if ( ListFindNoCase(dbtables,thisTableName) AND StructKeyExists(xTables[i].XmlAttributes,"introspect") AND isBoolean(xTables[i].XmlAttributes.introspect) AND xTables[i].XmlAttributes.introspect ) {
 					loadTable(thisTableName,false);
@@ -3009,7 +3017,7 @@
 		if ( arguments.docreate ) {
 			//Try to create the tables, if that fails we'll load up the failed SQL in a variable so it can be returned in a handy lump.
 			try {
-				CreateTables(tables,dbtables);
+				tables_made = CreateTables(tables_made,dbtables);
 			} catch (DataMgr exception) {
 				if ( Len(exception.Detail) ) {
 					FailedSQL = ListAppend(FailedSQL,exception.Detail,";");
@@ -3086,7 +3094,7 @@
 				if (
 					NOT (
 								StructKeyExists(sJoinTables,mytable)
-							OR	ListFindNoCase(tables,mytable)
+							OR	ListFindNoCase(tables_made,mytable)
 							OR	ListFindNoCase(dbtables,mytable)
 						)
 				) {
@@ -3149,7 +3157,7 @@
 		
 		<cfscript>
 		if ( arguments.docreate ) {
-			seedData(varXML,tables);
+			seedData(varXML,tables_made);
 			seedIndexes(varXML);
 		}
 		</cfscript>
@@ -5977,6 +5985,12 @@
 	<cfif NOT ( StructKeyExists(Arguments,"dbfields") AND Len(Arguments.dbfields) )>
 		<cfset Arguments.dbfields = getDBFieldList(Arguments.tablename)>
 	</cfif>
+
+	<cfif NOT ( StructKeyExists(Arguments,"fields") AND Len(Arguments.fields) )>
+		<cfset Arguments.fields = getFieldList(Arguments.tablename)>
+	</cfif>
+
+	
 	
 	<cfif ListFindNoCase(Arguments.dbfields,Arguments.NewField) AND ListFindNoCase(Arguments.dbfields,Arguments.OldField)>
 		<cfsavecontent variable="sql"><cfoutput>
@@ -5985,7 +5999,7 @@
 		WHERE	#escape(Arguments.NewField)# IS NULL
 		</cfoutput></cfsavecontent>
 		<cfset runSQL(sql)>
-	<cfelse>
+	<cfelseif ListFindNoCase(Arguments.fields,Arguments.NewField) AND ListFindNoCase(Arguments.fields,Arguments.OldField)>
 		<cfset pklist = getPrimaryKeyFieldNames(Arguments.tablename)>
 		<cfset sData = StructNew()>
 		<cfset sData[Arguments.NewField] = "">

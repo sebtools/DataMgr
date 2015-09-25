@@ -982,6 +982,7 @@
 	<cfargument name="sqlarray" type="array" required="yes">
 	
 	<cfset var aSQL = Super.cleanSQLArray(arguments.sqlarray)>
+	<cfset var ii = 0>
 	<cfset var sParams = StructNew()>
 	<cfset var str = "">
 	
