@@ -224,11 +224,11 @@
 			<cfset ArrayAppend(aSQL," + '#arguments.delimeter#' + ")>
 		</cfif>
 		<cfif isSimpleValue(fieldSQL)>
-			<cfset ArrayAppend(aSQL,"ISNULL(CAST(#fieldSQL# AS varchar(500)),'')")>
+			<cfset ArrayAppend(aSQL,"ISNULL(CAST(#fieldSQL# AS varchar(max)),'')")>
 		<cfelse>
 			<cfset ArrayAppend(aSQL,"ISNULL(CAST(")>
 			<cfset ArrayAppend(aSQL,fieldSQL)>
-			<cfset ArrayAppend(aSQL," AS varchar(500)),'')")>
+			<cfset ArrayAppend(aSQL," AS varchar(max)),'')")>
 		</cfif>
 	</cfloop>
 	
