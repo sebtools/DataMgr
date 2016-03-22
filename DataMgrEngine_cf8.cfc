@@ -72,9 +72,12 @@
 	
 	<cfset var qQuery = 0>
 	<cfset var thisSQL = "">
+	<cfset var sAttributes = getCF8QueryAttributes()>
 	
+	<cfset StructAppend(sAttributes,Arguments,"no")>
+
 	<cfif Len(arguments.sql)>
-		<cfquery attributeCollection="#getCF8QueryAttributes()#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
+		<cfquery attributeCollection="#sAttributes#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
 	</cfif>
 	
 	<cfif IsDefined("qQuery") AND isQuery(qQuery)>
@@ -90,10 +93,13 @@
 	<cfset var ii = 0>
 	<cfset var temp = "">
 	<cfset var aSQL = cleanSQLArray(arguments.sqlarray)>
+	<cfset var sAttributes = getCF8QueryAttributes()>
 	
+	<cfset StructAppend(sAttributes,Arguments,"no")>
+
 	<cftry>
 		<cfif ArrayLen(aSQL)>
-			<cfquery attributeCollection="#getCF8QueryAttributes()#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
+			<cfquery attributeCollection="#sAttributes#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
 		</cfif>
 	<cfcatch>
 		<cfthrow message="#CFCATCH.Message#" detail="#CFCATCH.detail#" extendedinfo="#readableSQL(aSQL)#">
