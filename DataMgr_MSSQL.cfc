@@ -264,6 +264,7 @@
 	<cfset var sTables = StructNew()>
 	<cfset var sField = 0>
 	<cfset var col = "">
+	<cfset var sql = "">
 	
 	<cfsavecontent variable="sql"><cfoutput>
 	SELECT		cols.table_name AS [table],

@@ -219,6 +219,7 @@
 	<cfargument name="dbtables" type="string" default="">
 	
 	<cfset var result = false>
+	<cfset var qTest = 0>
 	
 	<cfif NOT ( StructKeyExists(arguments,"dbtables") AND Len(Trim(arguments.dbtables)) )>
 		<cfset arguments.dbtables = "">
@@ -2369,6 +2370,7 @@
 	<cfset var result = ""><!--- will hold primary key --->
 	<cfset var qCheckKey = 0><!--- Used to get primary key --->
 	<cfset var sqlarray = ArrayNew(1)>
+	<cfset var aInsertSQL = ArrayNew(1)>
 	<cfset var sMatchingKeys = 0>
 	<cfset var sCheckData = 0>
 	
@@ -2795,6 +2797,7 @@
 	var DBErrs = "";
 	var sArgs = 0;
 	var sFilter = 0;
+	var sField = StructNew();
 	var sTablesFilters = StructNew();
 	var sTablesProps = StructNew();
 	var key = "";
@@ -3851,6 +3854,7 @@
 	<cfset var sqlarray = ArrayNew(1)>
 	<cfset var Specials = "LastUpdatedDate">
 	<cfset var usedfields = "">
+	<cfset var colnum = 0>
 	
 	<cfif NOT StructKeyExists(arguments,"data_where")>
 		<cfset arguments.data_where = StructNew()>
@@ -6134,6 +6138,8 @@ function queryRowToStruct(query){
 	<cfset var result = "">
 	<cfset var aFields = 0>
 	<cfset var sField = 0>
+	<cfset var qIndexes = 0>
+	<cfset var ii = 0>
 	
 <cfsavecontent variable="result"><cfoutput>
 <tables><cfloop list="#tables#" index="table"><cfset aFields = getDBTableStruct(table)>
