@@ -3592,6 +3592,7 @@
 	
 	<!--- Some automatic conversion code for GUIDs, thanks to Chuck Brockman --->
 	<cfif StructKeyExists(Arguments,"cfdatatype") AND Arguments.cfdatatype EQ "CF_SQL_IDSTAMP">
+		<cfset result = "">
 		<cfloop index="strval" list="#Arguments.value#">
 			<cfif Len(strval) GTE 23>
 				<cfif IsValid('guid', strval)>
