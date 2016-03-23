@@ -3588,14 +3588,19 @@
 	<cfargument name="cfdatatype" type="string" required="no">
 	
 	<cfset var result = arguments.value>
+	<cfset var strval = "">
 	
 	<!--- Some automatic conversion code for GUIDs, thanks to Chuck Brockman --->
-	<cfif StructKeyExists(arguments,"cfdatatype") AND arguments.cfdatatype EQ "CF_SQL_IDSTAMP">
-		<cfif Len(Trim(result)) EQ 0 OR Val(Trim(result)) EQ 0>
-			<!---<cfset result = JavaCast("null", 0)>--->
-		<cfelseif Len(result) GTE 23 AND NOT IsValid('guid', result)>
-			<cfset result = insert("-", result, 23)>
-		</cfif>
+	<cfif StructKeyExists(Arguments,"cfdatatype") AND Arguments.cfdatatype EQ "CF_SQL_IDSTAMP">
+		<cfloop index="strval" list="#Arguments.value#">
+			<cfif Len(strval) GTE 23>
+				<cfif IsValid('guid', strval)>
+					<cfset result = ListAppend(result,strval)>
+				<cfelse>
+					<cfset result = ListAppend(result,insert("-", strval, 23))>
+				</cfif>
+			</cfif>
+		</cfloop>
 	</cfif>
 	
 	<cfreturn result>
