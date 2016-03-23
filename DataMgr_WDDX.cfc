@@ -56,7 +56,7 @@ Day subtraction error
 	<cfargument name="delimeter" type="string" default=",">
 	<cfargument name="tablealias" type="string" required="no">
 	
-	<cfset var col = "">
+	<cfset var colname = "">
 	<cfset var aSQL = ArrayNew(1)>
 	<cfset var fieldSQL = 0>
 	
@@ -113,6 +113,7 @@ Day subtraction error
 	<cfset var out = 0>
 	<cfset var subdatum = StructNew()>
 	<cfset var temp2 = 0>
+	<cfset var row = 0>
 	
 	<cfset var pklist = "">
 	<cfset var qDataset = getDataset(arguments.tablename)>
@@ -393,6 +394,9 @@ Day subtraction error
 	<cfset var thisTableName = 0>
 	<cfset var varXML = 0>
 	<cfset var arrTables = 0>
+	<cfset var fields = "">
+	<cfset var tmpStruct = {}>
+	<cfset var thisField = {}>
 	
 	
 	<cfif NOT ( StructKeyExists(sTable,"TableStruct") AND ArrayLen(sTable["TableStruct"]) )>
@@ -585,6 +589,7 @@ Day subtraction error
 	<cfset var in = data>
 	<cfset var sArgs = StructNew()>
 	<cfset var temp = 0>
+	<cfset var sAdvSQL = StructNew()>
 	<!--- <cfset var operators = "=,>,<,>=,<=,LIKE,NOT LIKE,<>,IN">
 	
 	<cfif NOT ListFindNoCase(operators,arguments.operator)>
@@ -754,6 +759,7 @@ Day subtraction error
 	<cfset var GuidVar = "GUID"><!--- var to create variable name for GUID (SQL Server specific) --->
 	<cfset var inf = "">
 	<cfset var sqlarray = ArrayNew(1)>
+	<cfset var qDataset = 0>
 	
 	<cfset in = getRelationValues(arguments.tablename,in)>
 	

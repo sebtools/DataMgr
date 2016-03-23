@@ -815,35 +815,35 @@
 	<cfloop index="i" from="1" to="#ArrayLen(pkfields)#" step="1">
 		<cfif StructKeyExists(pkfields[i],"Increment")>
 			<cfif StructKeyExists(pkfields[i],"CF_DataType") AND pkfields[i]["CF_DataType"] eq "IDSTAMP">
-				<cfset data[pkfields[i]["ColumnName"]] = CreateUUID()>
+				<cfset arguments.data[pkfields[i]["ColumnName"]] = CreateUUID()>
 			<cfelse>
 				<!--- Increment value --->
-				<cfset data[pkfields[i]["ColumnName"]] = variables.simdata[arguments.tablename].RecordCount + 1>
+				<cfset arguments.data[pkfields[i]["ColumnName"]] = variables.simdata[arguments.tablename].RecordCount + 1>
 			</cfif>
 		</cfif>
 	</cfloop>
 	
 	<!--- Set default values --->
 	<cfloop index="col" list="#fieldlist#">
-		<cfif NOT StructKeyExists(data,col)>
+		<cfif NOT StructKeyExists(arguments.data,col)>
 			<cfset field = getField(arguments.tablename,col)>
 			<cfif StructKeyExists(field,"Special") AND Len(field["Special"])>
 				<cfswitch expression="#field.Special#">
 				<cfcase value="CreationDate,LastUpdatedDate">
-					<cfset data[col] = now()>
+					<cfset arguments.data[col] = now()>
 				</cfcase>
 				</cfswitch>
 			<cfelseif StructKeyExists(field,"Default") AND Len(field["Default"])>
-				<cfset data[col] = field["Default"]>
+				<cfset arguments.data[col] = field["Default"]>
 			</cfif>
 		</cfif>
 	</cfloop>
 	
 	<!--- Add the record --->
 	<cfset QueryAddRow(variables.simdata[arguments.tablename])>
-	<cfloop collection="#data#" item="col">
+	<cfloop collection="#arguments.data#" item="col">
 		<cfif ListFindNoCase(variables.simdata[arguments.tablename].ColumnList,col)>
-			<cfset QuerySetCell(variables.simdata[arguments.tablename], col, data[col])>
+			<cfset QuerySetCell(variables.simdata[arguments.tablename], col, arguments.data[col])>
 		</cfif>
 	</cfloop>
 	

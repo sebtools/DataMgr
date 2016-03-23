@@ -24,6 +24,7 @@
 	<cfargument name="sqlarray" type="array" required="yes">
 	
 	<cfset var qQuery = 0>
+	<cfset var i = 0>
 	<cfset var ii = 0>
 	<cfset var temp = "">
 	<cfset var aSQL = cleanSQLArray(arguments.sqlarray)>

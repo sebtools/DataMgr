@@ -69,6 +69,7 @@
 	<cfargument name="dbtables" type="string" default="">
 	
 	<cfset var result = false>
+	<cfset var qTest = 0>
 	
 	<cfif NOT ( StructKeyExists(arguments,"dbtables") AND Len(Trim(arguments.dbtables)) )>
 		<cfset arguments.dbtables = "">
