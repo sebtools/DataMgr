@@ -766,63 +766,87 @@
 				)
 		>
 			<cfset tables = ListAppend(tables,rfields[ii].Relation["table"])>
-			<cfif rfields[ii].Relation["onDelete"] EQ "Error">
-				<cfset sArgs = StructNew()>
-				<cfset sArgs["tablename"] = rfields[ii].Relation["table"]>
-				<cfset sArgs["tablealias"] = rfields[ii].Relation["table"]>
-				<cfif sArgs["tablealias"] EQ arguments.tablealias>
-					<cfset sArgs["tablealias"] = sArgs["tablealias"] & "_DataMgr_inner">
-				</cfif>
-				<cfset sArgs["isInExists"] = true>
-				<cfset sArgs["fieldlist"] = rfields[ii].Relation["field"]>
-				<cfif StructKeyExists(rfields[ii].Relation,"filters") AND isArray(rfields[ii].Relation.filters)>
-					<cfset sArgs["filters"] = rfields[ii].Relation.filters>
-				</cfif>
-				<cfset sArgs["advsql"] = StructNew()>
-				<cfset sArgs["advsql"]["WHERE"] = ArrayNew(1)>
-				<cfif StructKeyExists(rfields[ii].Relation,"join-table")>
-					<cfset sArgs["join"] = StructNew()>
-					<cfset sArgs["join"]["table"] = rfields[ii].Relation["join-table"]>
-					<cfset sArgs["join"]["type"] = "INNER">
-					<cfset sArgs["join"]["onleft"] = rfields[ii].Relation["remote-table-join-field"]>
-					<cfset sArgs["join"]["onright"] = rfields[ii].Relation["join-table-field-remote"]>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=rfields[ii].Relation["join-table"],field=rfields[ii].Relation["join-table-field-local"],tablealias=rfields[ii].Relation["join-table"],useFieldAlias=false))>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"]," = ")>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['local-table-join-field'],tablealias=arguments.tablealias,useFieldAlias=false))>
-				<cfelse>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=sArgs.tablename,field=rfields[ii].Relation['join-field-remote'],tablealias=sArgs.tablealias,useFieldAlias=false))>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"]," = ")>
-					<cfset ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['join-field-local'],tablealias=arguments.tablealias,useFieldAlias=false))>
-				</cfif>
+			<cfset sArgs = StructNew()>
+			<cfset sArgs["tablename"] = rfields[ii].Relation["table"]>
+			<cfset sArgs["tablealias"] = sArgs["tablename"]>
+			<cfif sArgs["tablealias"] EQ arguments.tablealias>
+				<cfset sArgs["tablealias"] = sArgs["tablealias"] & "_DataMgr_inner">
+			</cfif>
+			<cfif rfields[ii].Relation["onDelete"] EQ "Error"><!---  OR (  StructKeyExists(variables.tableprops[sArgs["tablename"]],"deletable") ) --->
+				<cfscript>
+				sArgs["isInExists"] = true;
+				sArgs["fieldlist"] = rfields[ii].Relation["field"];
+				sArgs["ignore"] = arguments.tablename;
+				/*
+				if ( StructKeyExists(variables.tableprops[sArgs["tablename"]],"deletable") ) {
+					sArgs[variables.tableprops[sArgs["tablename"]].deletable] = false;
+				}
+				*/
+				if ( StructKeyExists(rfields[ii].Relation,"filters") AND isArray(rfields[ii].Relation.filters) ) {
+					sArgs["filters"] = rfields[ii].Relation.filters;
+				}
+				sArgs["advsql"] = StructNew();
+				sArgs["advsql"]["WHERE"] = ArrayNew(1);
+				if ( StructKeyExists(rfields[ii].Relation,"join-table") ) {
+					sArgs["tablename"] = rfields[ii].Relation["join-table"];
+					StructDelete(sArgs,"tablealias");
+					sArgs["join"] = StructNew();
+					sArgs["join"]["table"] = rfields[ii].Relation["table"];
+					sArgs["join"]["type"] = "INNER";
+					sArgs["join"]["onright"] = rfields[ii].Relation["remote-table-join-field"];
+					sArgs["join"]["onleft"] = rfields[ii].Relation["join-table-field-remote"];
+					ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=rfields[ii].Relation["join-table"],field=rfields[ii].Relation["join-table-field-local"],tablealias=rfields[ii].Relation["join-table"],useFieldAlias=false));
+					ArrayAppend(sArgs["advsql"]["WHERE"]," = ");
+					ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['local-table-join-field'],tablealias=arguments.tablealias,useFieldAlias=false));
+				} else {
+					ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=sArgs.tablename,field=rfields[ii].Relation['join-field-remote'],tablealias=sArgs.tablealias,useFieldAlias=false));
+					ArrayAppend(sArgs["advsql"]["WHERE"]," = ");
+					ArrayAppend(sArgs["advsql"]["WHERE"],getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['join-field-local'],tablealias=arguments.tablealias,useFieldAlias=false));
+				}
 				
-				<cfset ArrayAppend(aSQL,"AND	NOT EXISTS (")>
-					<cfset ArrayAppend(aSQL,getRecordsSQL(argumentCollection=sArgs))>
-				<cfset ArrayAppend(aSQL,")")>
-			<cfelse>
-				<cfset sArgs = StructNew()>
-				<cfset sArgs["tablename"] = rfields[ii].Relation["table"]>
-				<cfset sArgs["tablealias"] = sArgs["tablename"]>
-				<cfif sArgs["tablealias"] EQ arguments.tablealias>
-					<cfset sArgs["tablealias"] = sArgs["tablealias"] & "_DataMgr_inner">
-				</cfif>
-				<cfset sArgs["ignore"] = arguments.tablename>
-				<cfset ArrayAppend(aSQL,"
-					AND	(
-							NOT EXISTS (
-								SELECT	1
-								FROM	#escape(rfields[ii].Relation['table'])#
-								WHERE	1 = 1
-									AND	(
-												1 = 0
-											OR	(
-				")>
-				<cfset ArrayAppend(aSQL,getIsDeletableSQL(argumentCollection=sArgs))>
-				<cfset ArrayAppend(aSQL,"
-												) = 0
-										)
-							)
-						)
-				")>
+								
+				ArrayAppend(aSQL,"AND	NOT EXISTS (");
+					ArrayAppend(aSQL,getRecordsSQL(argumentCollection=sArgs));
+				ArrayAppend(aSQL,")");
+				</cfscript>
+			<cfelseif rfields[ii].Relation["onDelete"] NEQ "Ignore">
+				<cfscript>
+				sArgs["ignore"] = arguments.tablename;
+				ArrayAppend(aSQL,"	AND	(");
+				ArrayAppend(aSQL,"			NOT EXISTS (");
+				ArrayAppend(aSQL,"				SELECT		1");
+				if ( StructKeyExists(rfields[ii].Relation,"join-table") ) {
+					sArgs["tablename"] = rfields[ii].Relation["join-table"];
+					StructDelete(sArgs,"tablealias");
+					ArrayAppend(aSQL,"				FROM		#escape(rfields[ii].Relation['join-table'])#");
+					ArrayAppend(aSQL,"			INNER JOIN	#escape(rfields[ii].Relation["table"])#");
+					ArrayAppend(aSQL,"				ON		#escape(rfields[ii].Relation["join-table"])#.#escape(rfields[ii].Relation["join-table-field-remote"])# = #escape(rfields[ii].Relation['table'])#.#escape(rfields[ii].Relation["remote-table-join-field"])#");
+				} else {
+					ArrayAppend(aSQL,"				FROM		#escape(rfields[ii].Relation['table'])#");
+					}
+				ArrayAppend(aSQL,"				WHERE		1 = 1");
+				ArrayAppend(aSQL,"					AND		(");
+				if ( StructKeyExists(rfields[ii].Relation,"join-table") ) {
+					ArrayAppend(aSQL,getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['local-table-join-field'],tablealias=arguments.tablealias,useFieldAlias=false));
+					ArrayAppend(aSQL," = ");
+					ArrayAppend(aSQL,getFieldSelectSQL(tablename=rfields[ii].Relation["join-table"],field=rfields[ii].Relation["join-table-field-local"],tablealias=rfields[ii].Relation["join-table"],useFieldAlias=false));
+				} else {
+					ArrayAppend(aSQL,getFieldSelectSQL(tablename=sArgs.tablename,field=rfields[ii].Relation['join-field-remote'],tablealias=sArgs.tablealias,useFieldAlias=false));
+					ArrayAppend(aSQL," = ");
+					ArrayAppend(aSQL,getFieldSelectSQL(tablename=arguments.tablename,field=rfields[ii].Relation['join-field-local'],tablealias=arguments.tablealias,useFieldAlias=false));
+				}
+				ArrayAppend(aSQL,"							)");
+				ArrayAppend(aSQL,"					AND		(");
+				ArrayAppend(aSQL,"									1 = 0");
+				ArrayAppend(aSQL,"								OR	(");
+
+				ArrayAppend(aSQL,getIsDeletableSQL(argumentCollection=sArgs));
+
+				ArrayAppend(aSQL,"									) = 0");
+					ArrayAppend(aSQL,"						)");
+				ArrayAppend(aSQL,"			)");
+				ArrayAppend(aSQL,"		)");
+				</cfscript>
 			</cfif>
 			<cfset hasNestedSQL = true>
 		</cfif>
