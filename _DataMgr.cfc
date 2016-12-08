@@ -1138,7 +1138,7 @@
 	<cfinvoke returnvariable="qRecords" method="runSQLArray">
 		<cfinvokeargument name="sqlarray" value="#aSQL#">
 		<!--- We'll pass maxrows, but it will only be used for databases that don't support this in SQL (currently just Derby) --->
-		<cfif StructKeyExists(arguments,"maxrows")>
+		<cfif StructKeyExists(arguments,"maxrows") AND Val(arguments.maxrows)>
 			<cfinvokeargument name="maxrows" value="#arguments.maxrows#">
 		</cfif>
 		<cfif arguments.offset GT 0>
