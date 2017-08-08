@@ -1,5 +1,5 @@
-<!--- 2.5.4 (Build 176) --->
-<!--- Last Updated: 2014-07-21 --->
+<!--- 2.6 (Build 180) --->
+<!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Sybase" hint="I manage data interactions with the Sybase database.">
 

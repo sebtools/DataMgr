@@ -1,5 +1,5 @@
-<!--- 2.5.3 (Build 175) --->
-<!--- Last Updated: 2013-12-11 --->
+<!--- 2.6 (Build 180) --->
+<!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Simulated Database" hint="I manage simulated data interactions with a database.">
 

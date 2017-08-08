@@ -1,5 +1,5 @@
-<!--- 2.5.4 (Build 176) --->
-<!--- Last Updated: 2014-07-21 --->
+<!--- 2.6 (Build 180) --->
+<!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the MS SQL Server database.">
 
@@ -988,7 +988,10 @@
 	<cfset var str = "">
 	
 	<cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1">
-		<cfif isStruct(aSQL[ii]) AND StructKeyExists(aSQL[ii],"name")>
+		<cfif
+				isStruct(aSQL[ii]) AND StructKeyExists(aSQL[ii],"name")
+			AND	NOT ( StructKeyExists(aSQL[ii],"list") AND aSQL[ii].list IS true )
+		>
 			<cfif StructKeyExists(sParams,aSQL[ii].name)>
 				<!---  --->
 				<cfif NOT (
@@ -1010,7 +1013,7 @@
 			<cfset str = "#str#(#sParams[ii].MaxLength#)">
 		</cfif>
 		<cfset str = "#str# = ">
-		<cfset ArrayPrepend(aSQL,";")>
+		<cfset ArrayPrepend(aSQL,"#chr(10)##chr(13)#")>
 		<cfset ArrayPrepend(aSQL,sParams[ii])>
 		<cfset ArrayPrepend(aSQL,str)>
 	</cfloop>

@@ -1,5 +1,5 @@
-<!--- 2.5.4 (Build 176) --->
-<!--- Last Updated: 2014-07-21 --->
+<!--- 2.6 (Build 180) --->
+<!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -3299,18 +3299,36 @@
 	
 </cffunction>
 
+<cffunction name="getQueryAttributes" access="public" returntype="struct" output="no">
+	
+	<cfset var sQuery = {name="qQuery",datasource="#variables.datasource#"}>
+	
+	<cfif StructKeyExists(variables,"username") AND StructKeyExists(variables,"password")>
+		<cfset sQuery["username"] = variables.username>
+		<cfset sQuery["password"] = variables.password>
+	</cfif>
+	<cfif variables.SmartCache>
+		<cfset sQuery["cachedafter"] = "#variables.CacheDate#">
+	</cfif>
+	
+	<cfif StructKeyExists(Arguments,"atts")>
+		<cfset StructAppend(sQuery,Arguments.atts,"no")>
+	</cfif>
+	<cfset StructAppend(sQuery,Arguments,"no")>
+
+	<cfreturn sQuery>
+</cffunction>
+
 <cffunction name="runSQL" access="public" returntype="any" output="no" hint="I run the given SQL.">
 	<cfargument name="sql" type="string" required="yes">
+	<cfargument name="atts" type="struct" required="no" hint="Attributes for cfquery.">
 	
 	<cfset var qQuery = 0>
 	<cfset var thisSQL = "">
+	<cfset var sAttributes = getQueryAttributes(ArgumentCollection=Arguments)>
 	
 	<cfif Len(arguments.sql)>
-		<cfif StructKeyExists(variables,"username") AND StructKeyExists(variables,"password")>
-			<cfquery name="qQuery" datasource="#variables.datasource#" username="#variables.username#" password="#variables.password#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
-		<cfelse>
-			<cfquery name="qQuery" datasource="#variables.datasource#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
-		</cfif>
+		<cfquery AttributeCollection="#sAttributes#">#Trim(DMPreserveSingleQuotes(arguments.sql))#</cfquery>
 		
 		<cfset logSQL(arguments.sql)>
 	</cfif>
@@ -3323,19 +3341,17 @@
 
 <cffunction name="runSQLArray" access="public" returntype="any" output="no" hint="I run the given array representing SQL code (structures in the array represent params).">
 	<cfargument name="sqlarray" type="array" required="yes">
+	<cfargument name="atts" type="struct" required="no" hint="Attributes for cfquery.">
 	
 	<cfset var qQuery = 0>
 	<cfset var ii = 0>
 	<cfset var temp = "">
 	<cfset var aSQL = cleanSQLArray(arguments.sqlarray)>
+	<cfset var sAttributes = getQueryAttributes(ArgumentCollection=Arguments)>
 	
 	<cftry>
 		<cfif ArrayLen(aSQL)>
-			<cfif StructKeyExists(variables,"username") AND StructKeyExists(variables,"password")>
-				<cfquery name="qQuery" datasource="#variables.datasource#" username="#variables.username#" password="#variables.password#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
-			<cfelse>
-				<cfquery name="qQuery" datasource="#variables.datasource#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
-			</cfif>
+			<cfquery AttributeCollection="#sAttributes#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
 		</cfif>
 		
 		<cfset logSQL(aSQL)>
@@ -4525,6 +4541,12 @@
 <cffunction name="cleanSQLArray" access="public" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
 	
+	<cfreturn _cleanSQLArray(arguments.sqlarray)>
+</cffunction>
+
+<cffunction name="_cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
+	<cfargument name="sqlarray" type="array" required="yes">
+	
 	<cfset var result = ArrayNew(1)>
 	<cfset var i = 0>
 	<cfset var j = 0>
@@ -4532,7 +4554,7 @@
 	
 	<cfloop index="i" from="1" to="#ArrayLen(arguments.sqlarray)#" step="1">
 		<cfif isArray(arguments.sqlarray[i])>
-			<cfset temparray = cleanSQLArray(arguments.sqlarray[i])>
+			<cfset temparray = _cleanSQLArray(arguments.sqlarray[i])>
 			<cfloop index="j" from="1" to="#ArrayLen(temparray)#" step="1">
 				<cfset ArrayAppend(result,temparray[j])>
 			</cfloop>
