@@ -1,10 +1,10 @@
-<!--- 2.6 (Build 180) --->
-<!--- Last Updated: 2017-08-08 --->
+<!--- 2.6.1 (Build 181) --->
+<!--- Last Updated: 2017-08-25 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
 
-<cfset variables.DataMgrVersion = "2.5.3">
+<cfset variables.DataMgrVersion = "2.6">
 <cfset variables.DefaultDatasource = getDefaultDatasource()>
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
@@ -106,6 +106,66 @@
 		</cfloop>
 	</cfif>
 	
+</cffunction>
+
+<cffunction name="getAdvSQLDelimiter" access="private" returntype="string" output="no">
+	<cfargument name="key" type="string" required="true">
+
+	<cfswitch expression="#Arguments.key#">
+	<cfcase value="SELECT,ORDER BY,GROUP BY,HAVING,SET">
+		<cfreturn ",">
+	</cfcase>
+	<cfcase value="WHERE,">
+		<cfreturn "AND">
+	</cfcase>
+	<cfdefaultcase>
+		<cfreturn "">
+	</cfdefaultcase>
+	</cfswitch>
+</cffunction>
+
+<cffunction name="addAdvSQL" access="public" returntype="void" output="no">
+	<cfargument name="Args" type="struct" required="true">
+	<cfargument name="key" type="string" required="true">
+	<cfargument name="sql" type="any" required="true">
+
+	<cfscript>
+	var delim = getAdvSQLDelimiter(Arguments.key);
+	var sql_start = "";
+
+	//This just allows a string to be passed in for the SQL for simple cases.
+	if ( isSimpleValue(Arguments.sql) ) {
+		Arguments.sql = [Arguments.sql];
+	}
+
+	//If the SQL isn't usable, throw an exception.
+	if ( NOT isArray(Arguments.sql) ) {
+		throwDMError("The sql argument of addAdvSQL must be either a string or a sqlarray.");
+	}
+
+	//Make sure AdvSQL exists.
+	if ( NOT StructKeyExists(Arguments.Args,"AdvSQL") ) {
+		Arguments.Args["AdvSQL"] = {};
+	}
+
+	//Make sure this key for AdvSQL exists.
+	if ( NOT StructKeyExists(Arguments.Args.AdvSQL,Arguments.key) ) {
+		Arguments.Args["AdvSQL"][Arguments.key] = [];
+	}
+
+	//Make sure we include delimiter ahead of incoming sql if it is needed.
+	if ( Len(delim) AND ArrayLen(Arguments.Args["AdvSQL"][Arguments.key]) ) {
+		sql_start = Trim(Arguments.sql[1]);
+		//If the SQL doesn't start with the delimiter, add it to the start
+		//Not adding it to the end of AdvSQL, just in case multiple things are messing with that at once.
+		if ( NOT ( Len(sql_start) GTE Len(delim) AND Left(sql_start,Len(delim)) EQ delim ) ) {
+			ArrayPrepend(Arguments.sql," #delim# ");
+		}
+	}
+
+	ArrayAppend(Arguments.Args["AdvSQL"][Arguments.key],Arguments.sql);
+	</cfscript>
+
 </cffunction>
 
 <cffunction name="setCacheDate" access="public" returntype="void" output="no">
@@ -3372,8 +3432,6 @@
 	<cfset var text = "">
 	
 	<cfif StructKeyExists(Variables,"logfile") AND Len(Variables.logfile)>
-		<cfdump var="#Arguments.sql#">
-		<cfabort>
 		<cfif isSimpleValue(Arguments.sql) AND Len(Arguments.sql)>
 			<cfset text = Arguments.sql>
 		<cfelseif isArray(Arguments.sql) AND ArrayLen(Arguments.sql)>
@@ -3383,9 +3441,6 @@
 		<cfif Len(text)>
 			<cflog file="#Variables.logfile#" text="#text#">
 		</cfif>
-	<cfelse>
-		NOPE
-		<cfabort>
 	</cfif>
 	
 </cffunction>
