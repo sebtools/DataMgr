@@ -201,7 +201,7 @@
 	<cfargument name="Observer" type="any" required="no">
 
 	<cfset variables.Observer = Arguments.Observer>
-	
+
 </cffunction>
 
 <cffunction name="getDefaultDatasource" access="public" returntype="string" output="no">
@@ -2496,6 +2496,15 @@
 	<cfset var sCheckData = 0>
 	<cfset var ChangeUUID = CreateUUID()>
 
+	<cfif NOT StructKeyExists(Arguments,"log")>
+		<cfset Arguments.log = variables.doLogging>
+	</cfif>
+	<cfif Arguments.log>
+		<cfif arguments.tablename EQ variables.logtable>
+			<cfset Arguments.log = false>
+		</cfif>
+	</cfif>
+
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
 	</cfif>
@@ -2573,7 +2582,7 @@
 	</cfif>
 
 	<!--- Log insert --->
-	<cfif variables.doLogging AND NOT arguments.tablename EQ variables.logtable>
+	<cfif Arguments.log>
 		<cfinvoke method="logAction">
 			<cfinvokeargument name="tablename" value="#arguments.tablename#">
 			<cfif ArrayLen(pkfields) EQ 1 AND StructKeyExists(in,pkfields[1].ColumnName)>
@@ -3350,6 +3359,17 @@
 		</cfif>
 	</cfif>
 
+	<cfif StructKeyExists(Arguments,"cfsqltype")>
+		<cfswitch expression="#Arguments.cfsqltype#">
+		<cfcase value="CF_SQL_BLOB">
+			<cfset Arguments.value = BinaryDecode(Arguments.value,"Hex")>
+		</cfcase>
+		<cfcase value="CF_SQL_BIT">
+			<cfset Arguments.value = getBooleanSQLValue(Arguments.value)>
+		</cfcase>
+		</cfswitch>
+	</cfif>
+
 	<cfif NOT StructKeyExists(arguments,"null")>
 		<cfset arguments.null = "no">
 	</cfif>
@@ -3452,7 +3472,7 @@
 
 	<cftry>
 		<cfif ArrayLen(aSQL)>
-			<cfquery AttributeCollection="#sAttributes#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif> </cfloop></cfquery>
+			<cfquery AttributeCollection="#sAttributes#"><cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1"><cfif IsSimpleValue(aSQL[ii])><cfset temp = aSQL[ii]>#Trim(DMPreserveSingleQuotes(temp))#<cfelseif IsStruct(aSQL[ii])><cfset aSQL[ii] = queryparam(argumentCollection=aSQL[ii])><cfif StructKeyExists(aSQL[ii],"cfsqltype")><cfswitch expression="#aSQL[ii].cfsqltype#"><cfcase value="CF_SQL_BIT">#getBooleanSqlValue(aSQL[ii].value)#</cfcase><cfcase value="CF_SQL_DATE,CF_SQL_DATETIME">#CreateODBCDateTime(aSQL[ii].value)#</cfcase><cfdefaultcase><!--- <cfif ListFindNoCase(variables.dectypes,aSQL[ii].cfsqltype)>#Val(aSQL[ii].value)#<cfelse> ---><cfqueryparam value="#sqlvalue(aSQL[ii].value,aSQL[ii].cfsqltype)#" cfsqltype="#aSQL[ii].cfsqltype#" maxlength="#aSQL[ii].maxlength#" scale="#aSQL[ii].scale#" null="#aSQL[ii].null#" list="#aSQL[ii].list#" separator="#aSQL[ii].separator#"><!--- </cfif> ---></cfdefaultcase></cfswitch></cfif></cfif> </cfloop></cfquery>
 		</cfif>
 
 		<cfset logSQL(aSQL)>
@@ -4357,7 +4377,7 @@
 			arguments["Special"] = Trim(arguments["Special"]);
 			//Sorter or DeletionMark should default to zero/false
 			if (  NOT StructKeyExists(arguments,"Default") ) {
-				if ( arguments["Special"] EQ "Sorter" OR ( arguments["Special"] EQ "DeletionMark" AND arguments["CF_Datatype"] EQ "CF_SQL_BOOLEAN" ) ) {
+				if ( arguments["Special"] EQ "Sorter" OR ( arguments["Special"] EQ "DeletionMark" AND arguments["CF_Datatype"] EQ "CF_SQL_BIT" ) ) {
 					arguments["Default"] = makeDefaultValue(0,arguments["CF_DataType"]);
 				}
 				if ( arguments["Special"] EQ "CreationDate" OR arguments["Special"] EQ "LastUpdatedDate" ) {
@@ -4977,6 +4997,9 @@
 	<cfcase value="CF_SQL_BIT">
 		<cfset result = "boolean">
 	</cfcase>
+	<cfcase value="CF_SQL_BLOB">
+		<cfset result = "binary">
+	</cfcase>
 	<cfcase value="CF_SQL_CHAR,CF_SQL_IDSTAMP,CF_SQL_VARCHAR">
 		<cfset result = "string">
 	</cfcase>
@@ -5334,6 +5357,9 @@
 	<cfswitch expression="#arguments.CF_DataType#">
 	<cfcase value="CF_SQL_BIT">
 		<cfset result = "boolean">
+	</cfcase>
+	<cfcase value="CF_SQL_BLOB">
+		<cfset result = "binary">
 	</cfcase>
 	<cfcase value="CF_SQL_DECIMAL,CF_SQL_DOUBLE,CF_SQL_FLOAT,CF_SQL_NUMERIC">
 		<cfset result = "numeric">
@@ -6113,6 +6139,16 @@
 		<cfset sResult.value = currval[sResult.ColumnName][1]>
 	<cfelse>
 		<cfset throwDMError("Unable to add data to structure for #sResult.ColumnName#")>
+	</cfif>
+
+	<cfif
+			IsBoolean(sResult.value)
+		AND	(
+					( StructKeyExists(sResult,"CF_Datatype") AND sResult.CF_Datatype EQ "CF_SQL_BIT" )
+				OR	( StructKeyExists(sResult,"Relation") AND isStruct(sResult.Relation) AND sResult.Relation.CF_Datatype EQ "CF_SQL_BIT" )
+			)
+	>
+		<cfset sResult.value = getBooleanSqlValue(sResult.value)>
 	</cfif>
 
 	<cfreturn sResult>
