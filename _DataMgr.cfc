@@ -632,6 +632,20 @@
 	<cfreturn sResult>
 </cffunction>
 
+<cffunction name="getCheckFields" access="public" returntype="string" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+
+	<cfif
+		StructKeyExists(variables.tableprops,arguments.tablename)
+		AND
+		StructKeyExists(variables.tableprops[arguments.tablename],"checkfields")
+	>
+		<cfreturn variables.tableprops[arguments.tablename]["checkfields"]>
+	<cfelse>
+		<cfreturn "">
+	</cfif>
+</cffunction>
+
 <cffunction name="getDataBase" access="public" returntype="string" output="no" hint="I return the database platform being used.">
 
 	<cfset var connection = 0>
@@ -2485,7 +2499,7 @@
 
 	<cfset var OnExistsValues = "insert,error,update,skip"><!--- possible values for OnExists argument --->
 	<cfset var ii = 0><!--- generic counter --->
-	<cfset var pkfields = getPKFields(arguments.tablename)>
+	<cfset var pkfields = 0>
 	<cfset var in = arguments.data><!--- holder for incoming data (just for readability) --->
 	<cfset var qGetRecords = QueryNew('none')>
 	<cfset var result = ""><!--- will hold primary key --->
@@ -2495,6 +2509,24 @@
 	<cfset var sMatchingKeys = 0>
 	<cfset var sCheckData = 0>
 	<cfset var ChangeUUID = CreateUUID()>
+	<cfset var sTable = {table=Arguments.tablename}>
+	<cfset var isTiming = false AND (Arguments.tablename EQ "secProfiles")>
+	<cfset var pklist = getPrimaryKeyFieldNames(arguments.tablename)>
+
+	<cfif
+		(
+			Arguments.OnExists EQ "update"
+			OR
+			Arguments.OnExists EQ "save"
+		)
+		AND
+		NOT Len(Arguments.checkfields)
+	>
+		<cfset Arguments.checkfields = getCheckFields(Arguments.tablename)>
+		<cfif Len(Arguments.checkfields)>
+			<cfset Arguments.OnExists = "update">
+		</cfif>
+	</cfif>
 
 	<cfif NOT StructKeyExists(Arguments,"log")>
 		<cfset Arguments.log = variables.doLogging>
@@ -2505,6 +2537,8 @@
 		</cfif>
 	</cfif>
 
+	<cfset pkfields = getPKFields(arguments.tablename)>
+
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
 	</cfif>
@@ -2512,6 +2546,7 @@
 	<cfset sCheckData = StructCopy(in)>
 
 	<cfif ListLen(arguments.checkfields)>
+		<cfset arguments.checkfields = ListAppend(pklist,arguments.checkfields)>
 		<cfloop item="ii" collection="#sCheckData#">
 			<cfif NOT ListFindNoCase(arguments.checkfields,ii)>
 				<cfset StructDelete(sCheckData,ii)>
@@ -3684,7 +3719,7 @@
 		<cfif isOfCFType(item,getEffectiveDataType(arguments.tablename,arguments.multifield)) AND NOT ListFindNoCase(ExistingList,item)>
 			<cfset setStruct = StructNew()>
 			<cfset setStruct[arguments.keyfield] = arguments.keyvalue>
-			<cfset setStruct[arguments.multifield] = item>
+			<cfset setStruct[arguments.multifield] = Trim(item)>
 			<cfset insertRecord(arguments.tablename,setStruct,"skip")>
 			<cfset ExistingList = ListAppend(ExistingList,item)><!--- in case list has one item more than once (4/26/06) --->
 		</cfif>
@@ -5608,7 +5643,7 @@
 					<!--- Otherwise, get the values --->
 					<cfloop index="val" list="#in[relates[i].ColumnName]#">
 						<cfset temp = StructNew()>
-						<cfset temp[relates[i].Relation["field"]] = val>
+						<cfset temp[relates[i].Relation["field"]] = Trim(val)>
 						<cfset qRecords = getRecords(tablename=relates[i].Relation["table"],data=temp,fieldlist=rtablePKeys[1].ColumnName)>
 						<cfif qRecords.RecordCount>
 							<cfset list = ListAppend(list,qRecords[rtablePKeys[1].ColumnName][1])>
