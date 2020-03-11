@@ -2513,6 +2513,8 @@
 	<cfset var isTiming = false AND (Arguments.tablename EQ "secProfiles")>
 	<cfset var pklist = getPrimaryKeyFieldNames(arguments.tablename)>
 
+	<cfset in = getRelationValues(arguments.tablename,in)>
+
 	<cfif
 		(
 			Arguments.OnExists EQ "update"
