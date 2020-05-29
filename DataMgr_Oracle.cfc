@@ -1,7 +1,7 @@
 <!--- 2.6 (Build 180) --->
 <!--- Last Updated: 2017-08-08 --->
 <!--- Created by Beth Bowden and Steve Bryant 2007-01-14 --->
-<cfcomponent extends="DataMgr" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database.">
+<cfcomponent extends="DataMgr_SQL" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database.">
 
 <cffunction name="getDatabase" access="public" returntype="string" output="no" hint="I return the database platform being used (Access,MS SQL,MySQL etc).">
 	<cfreturn "Oracle">
@@ -16,29 +16,29 @@
 </cffunction>
 
 <cffunction name="getDatabaseProperties" access="public" returntype="struct" output="no" hint="I return some properties about this database">
-	
+
 	<cfset var sProps = StructNew()>
-	
+
 	<cfset sProps["areSubqueriesSortable"] = false>
-	
+
 	<cfreturn sProps>
 </cffunction>
 
 <cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
 	<cfargument name="field" type="struct" required="yes">
-	
+
 	<cfset var sField = adjustColumnArgs(arguments.field)>
 	<cfset var type = getDBDataType(sField.CF_DataType)>
 	<cfset var result = "">
-	
+
 	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #UCase(type)#<cfif isStringType(type)>(#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif Len(Trim(sField.Default))> DEFAULT #sField.Default#</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes" />
-	
+
 	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- table structure --->
 	<cfset var CreateSQL = ""><!--- holds sql to create table --->
@@ -66,7 +66,7 @@ CREATE SEQUENCE #escape("#arguments.tablename#_SEQ")#;
 CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before insert on #escape(arguments.tablename)##lf#  for each row #lf#begin  #lf#    select #escape("#arguments.tablename#_SEQ")#.nextval into :NEW.#escape(arrFields[seqField].ColumnName)# from dual|DataMgr_SemiColon|#lf#end|DataMgr_SemiColon|
 	</cfif>
 	</cfoutput></cfsavecontent>
-	
+
 	<cfreturn CreateSQL>
 </cffunction>
 
@@ -95,15 +95,15 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfargument name="fields" type="string" required="yes">
 	<cfargument name="delimeter" type="string" default=",">
 	<cfargument name="tablealias" type="string" required="no">
-	
+
 	<cfset var col = "">
 	<cfset var aSQL = ArrayNew(1)>
 	<cfset var fieldSQL = 0>
-	
+
 	<cfif NOT StructKeyExists(arguments,"tablealias")>
 		<cfset arguments.tablealias = arguments.tablename>
 	</cfif>
-	
+
 	<cfloop index="col" list="#arguments.fields#">
 		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=col,tablealias=arguments.tablealias,useFieldAlias=false)>
 		<cfif ArrayLen(aSQL)>
@@ -117,7 +117,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 			<cfset ArrayAppend(aSQL," AS varchar(500)),'')")>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn aSQL>
 </cffunction>
 
@@ -156,7 +156,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	var tmpStruct    = StructNew();
 	var PrimaryKeys  = "";
 	var sqlarray     = ArrayNew(1);
-	
+
   	var qSequences = 0;
   	var Sequences = "";
 
@@ -352,12 +352,12 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 <cffunction name="getDBTableIndexes" access="public" returntype="query" output="false" hint="">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="indexname" type="string" required="no">
-	
+
 	<cfset var sql = "">
 	<cfset var fields = "">
 	<cfset var qRawIndexes = 0>
 	<cfset var qIndexes = QueryNew("tablename,indexname,fields,unique,clustered")>
-	
+
 	<cfsavecontent variable="sql"><cfoutput>
 	SELECT		ui.table_name, ui.index_name, DECODE(ui.uniqueness, 'UNIQUE', 'YES', 'NO') AS non_unique,
 				ai.index_type, ai.column_name,ai.column_position
@@ -388,9 +388,9 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 		ON		ui.index_name = ai.index_name
 	ORDER BY	ui.table_name, ui.index_name, ui.uniqueness desc, ai.column_position
 	</cfoutput></cfsavecontent>
-	
+
 	<cfset qRawIndexes = runSQL(sql)>
-	
+
 	<cfoutput query="qRawIndexes" group="index_name">
 		<cfset fields = "">
 		<cfset QueryAddRow(qIndexes)>
@@ -407,7 +407,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 		</cfoutput>
 		<cfset QuerySetCell(qIndexes,"fields",fields)>
 	</cfoutput>
-	
+
 	<cfreturn qIndexes>
 </cffunction>
 
@@ -419,7 +419,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
 	<cfargument name="tablealias" type="string" required="no">
-	
+
 	<cfset var sField = getField(arguments.tablename,arguments.field)>
 	<cfset var dtype = getEffectiveDataType(arguments.tablename,sField.Relation.field)>
 	<cfset var aSQL = ArrayNew(1)>
@@ -427,7 +427,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfset var sJoin = StructNew()>
 	<cfset var sArgs = StructNew()>
 	<cfset var temp = "">
-	
+
 	<cfswitch expression="#dtype#">
 	<cfcase value="numeric">
 		<cfset ArrayAppend(aSQL,"nvl(CASE WHEN (")>
@@ -450,8 +450,8 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 		<cfset ArrayAppend(aSQL,",0)")>
 	</cfcase>
 	</cfswitch>
-	
-	<cfreturn aSQL>	
+
+	<cfreturn aSQL>
 </cffunction>
 
 <cffunction name="getNowSQL" access="public" returntype="string" output="no" hint="I return the SQL for the current date/time.">
@@ -471,29 +471,29 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 <cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="indexname" type="string" required="yes">
-	
+
 	<cfset var result = false>
 	<cfset var qIndexes = RunSQL("
-		SELECT 
-					dic.table_name AS table_name, 
+		SELECT
+					dic.table_name AS table_name,
 					dic.index_name AS index_name,
 					DECODE(di.uniqueness, 'UNIQUE', 'YES', 'NO') AS non_unique,
-					dic.column_position AS index_order, 
-					dic.column_name 
+					dic.column_position AS index_order,
+					dic.column_name
 		FROM		user_indexes di
 		INNER JOIN	user_ind_columns dic
 			ON		di.table_name = dic.table_name
 				AND	di.index_name = dic.index_name
-		WHERE		1 = 1 
+		WHERE		1 = 1
 			AND		dic.table_name = '#UCase(arguments.tablename)#'
 			AND		dic.index_name = '#arguments.indexname#'
 		ORDER BY	dic.table_name, dic.index_name, di.uniqueness desc, dic.column_position
 	")>
-	
+
 	<cfif qIndexes.RecordCount>
 		<cfset result = true>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -512,27 +512,27 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 <cffunction name="getMaxRowsPrefix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
 	<cfargument name="offset" type="numeric" default="0">
-	
+
 	<cfreturn " ">
 </cffunction>
 
 <cffunction name="getMaxRowsSuffix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
 	<cfargument name="offset" type="numeric" default="0">
-	
+
 	<cfreturn "">
 </cffunction>
 
 <cffunction name="getMaxRowsWhere" access="public" returntype="string" output="no" hint="I get the SQL in the where statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
 	<cfargument name="offset" type="numeric" default="0">
-	
+
 	<cfset var result = "rownum <= #arguments.maxrows#">
-	
+
 	<cfif arguments.offset>
 		<cfset result = "( #result# AND rownum > #arguments.offset# )">
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 

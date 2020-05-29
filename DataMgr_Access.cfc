@@ -1,7 +1,7 @@
 <!--- 2.6 (Build 180) --->
 <!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
-<cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database.">
+<cfcomponent extends="DataMgr_SQL" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database.">
 
 <cffunction name="getDatabase" access="public" returntype="string" output="no" hint="I return the database platform being used (Access,MS SQL,MySQL etc).">
 	<cfreturn "Access">
@@ -17,13 +17,13 @@
 
 <cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
 	<cfargument name="field" type="struct" required="yes">
-	
+
 	<cfset var sField = adjustColumnArgs(arguments.field)>
 	<cfset var type = getDBDataType(sField.CF_DataType)>
 	<cfset var result = "">
-	
+
 	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# <cfif sField.Increment>COUNTER<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric"><!---  AND StructKeyExists(sField,"scale") AND sField.scale GT 0 ---> float<cfelse>#getDBDataType(sField.CF_DataType)#</cfif><cfif isStringType(type)>(#Min(sField.Length,255)#)</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -33,23 +33,23 @@
 	<cfargument name="CF_Datatype" type="string" required="yes" hint="The ColdFusion SQL Datatype of the column.">
 	<cfargument name="Length" type="numeric" default="50" hint="The ColdFusion SQL Datatype of the column.">
 	<cfargument name="Default" type="string" required="no" hint="The default value for the column.">
-	
+
 	<cfset var type = getDBDataType(arguments.CF_Datatype)>
 	<cfset var sql = "">
 	<cfset var FailedSQL = "">
-	
+
 	<cfsavecontent variable="sql"><cfoutput>ALTER TABLE #escape(arguments.tablename)# ADD #sqlCreateColumn(arguments)#</cfoutput></cfsavecontent>
-	
+
 	<cftry>
 		<cfset runSQL(sql)>
 		<cfcatch>
 			<cfset FailedSQL = ListAppend(FailedSQL,sql,";")>
 		</cfcatch>
 	</cftry>
-	
+
 	<cfif StructKeyExists(arguments,"Default") AND Len(Trim(arguments.Default))>
 		<cfsavecontent variable="sql"><cfoutput>UPDATE	#escape(arguments.tablename)#	SET	#escape(arguments.columnname)# = #arguments.Default#</cfoutput></cfsavecontent>
-	
+
 		<cftry>
 			<cfset runSQL(sql)>
 			<cfcatch>
@@ -57,20 +57,20 @@
 			</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfif Len(FailedSQL)>
 		<cfthrow message="Failed to add Column (""#arguments.ColumnName#"")." type="DataMgr" detail="#FailedSQL#">
 	</cfif>
-	
+
 </cffunction>
 
 <cffunction name="dbtableexists" access="public" returntype="boolean" output="no" hint="I indicate whether or not the given table exists in the database">
 	<cfargument name="tablename" type="string" required="true">
 	<cfargument name="dbtables" type="string" default="">
-	
+
 	<cfset var result = false>
 	<cfset var qTest = 0>
-	
+
 	<cfif NOT ( StructKeyExists(arguments,"dbtables") AND Len(Trim(arguments.dbtables)) )>
 		<cfset arguments.dbtables = "">
 		<cftry><!--- Try to get a list of tables load in DataMgr --->
@@ -79,7 +79,7 @@
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfif Len(arguments.dbtables)><!--- If we have tables loaded in DataMgr --->
 		<cfif ListFindNoCase(arguments.dbtables, arguments.tablename)>
 			<cfset result = true>
@@ -96,67 +96,67 @@
 			</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes" hint="The name of the table to create.">
-	
+
 	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- structure of table --->
 	<cfset var CreateSQL = ""><!--- holds sql used for creation, allows us to return it in an error --->
 	<cfset var pkfields = ""><!--- primary key fields --->
 	<cfset var thisField = ""><!--- current field holder --->
-	
+
 	<!--- Find Primary Key fields --->
 	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
 		<cfif arrFields[ii].PrimaryKey>
 			<cfset pkfields = ListAppend(pkfields,arrFields[ii].ColumnName)>
 		</cfif>
 	</cfloop>
-	
+
 	<!--- create the sql to create the table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
 	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
 		#sqlCreateColumn(arrFields[ii])#<cfif ii LT ArrayLen(arrFields)> ,</cfif></cfloop>
 		<cfif Len(pkfields)>,
-		CONSTRAINT [PK_#tablename#] PRIMARY KEY 
+		CONSTRAINT [PK_#tablename#] PRIMARY KEY
 		(<cfloop index="ii" from="1" to="#ListLen(pkfields)#" step="1"><cfset thisField = ListGetAt(pkfields,ii)>
 			#thisField#<cfif ii lt ListLen(pkfields)>,</cfif></cfloop>
 		)
 		</cfif>
 	)<!--- <cfif Len(pkfields)> ON [PRIMARY]</cfif> --->
 	</cfoutput></cfsavecontent>
-	
+
 	<cfreturn CreateSQL>
 </cffunction>
 
 <cffunction name="getNewSortNum" access="public" returntype="numeric" output="no" hint="I get the value an increment higher than the highest value in the given field to put a record at the end of the sort order.">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="sortfield" type="string" required="yes" hint="The field holding the sort order.">
-	
+
 	<cfset var qLast = 0>
 	<cfset var result = 0>
-	
+
 	<cfset qLast = runSQL("SELECT TOP 1 #escape(arguments.sortfield)# FROM #escape(arguments.tablename)#")>
-	
+
 	<cfif qLast.RecordCount and isNumeric(qLast[arguments.sortfield][1])>
 		<cfset result = qLast[arguments.sortfield][1] + 1>
 	<cfelse>
 		<cfset result = 1>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="concat" access="public" returntype="string" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
 	<cfargument name="fields" type="string" required="yes">
 	<cfargument name="delimeter" type="string" default="">
-	
+
 	<cfset var colname = "">
 	<cfset var result = "">
-	
+
 	<cfloop index="colname" list="#arguments.fields#">
 		<cfif Len(result)>
 			<cfset result =  "#result# & '#arguments.delimeter#' & CSTR(#colname#)">
@@ -164,7 +164,7 @@
 			<cfset result = "CSTR(#colname#)">
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -173,15 +173,15 @@
 	<cfargument name="fields" type="string" required="yes">
 	<cfargument name="delimeter" type="string" default=",">
 	<cfargument name="tablealias" type="string" required="no">
-	
+
 	<cfset var col = "">
 	<cfset var aSQL = ArrayNew(1)>
 	<cfset var fieldSQL = 0>
-	
+
 	<cfif NOT StructKeyExists(arguments,"tablealias")>
 		<cfset arguments.tablealias = arguments.tablename>
 	</cfif>
-	
+
 	<cfloop index="col" list="#arguments.fields#">
 		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=col,tablealias=arguments.tablealias,useFieldAlias=false)>
 		<cfif ArrayLen(aSQL)>
@@ -195,27 +195,27 @@
 			<cfset ArrayAppend(aSQL,")")>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn aSQL>
 </cffunction>
 
 <cffunction name="escape" access="public" returntype="string" output="no" hint="I return an escaped value for a table or field.">
 	<cfargument name="name" type="string" required="yes">
-	
+
 	<cfset var result = "">
 	<cfset var item = "">
-	
+
 	<cfloop index="item" list="#arguments.name#" delimiters=".">
 		<cfset result = ListAppend(result,"[#item#]",".")>
 	</cfloop>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getDatabaseTables" access="public" returntype="string" output="yes" hint="I get a list of all tables in the current database.">
 
 	<cfset var qTables = 0>
-	
+
 	<cftry>
 		<cfset qTables = runSQL("SELECT Name FROM MSysObjects WHERE Type = 1 AND Flags = 0")>
 		<cfcatch>
@@ -226,13 +226,13 @@
 			</cfif>
 		</cfcatch>
 	</cftry>
-	
+
 	<cfreturn ValueList(qTables.Name)>
 </cffunction>
 
 <cffunction name="getDBTableStruct" access="public" returntype="array" output="no" hint="I return the structure of the given table in the database.">
 	<cfargument name="tablename" type="string" required="yes">
-	
+
 	<cfscript>
 	var qRawFetch = 0;
 	var arrStructure = 0;
@@ -242,10 +242,10 @@
 	var PrimaryKeys = 0;
 	var TableData = ArrayNew(1);
 	</cfscript>
-	
+
 	<cfset qRawFetch = runSQL("SELECT TOP 1 * FROM #arguments.tablename#")>
 	<cfset arrStructure = getMetaData(qRawFetch)>
-	
+
 	<cfif isArray(arrStructure)>
 		<cfloop index="ii" from="1" to="#ArrayLen(arrStructure)#" step="1">
 			<cfset sField = StructNew()>
@@ -261,7 +261,7 @@
 			<cfif isStringType(arrStructure[ii].TypeName) AND NOT sField["CF_DataType"] EQ "CF_SQL_LONGVARCHAR">
 				<cfset sField["length"] = 255>
 			</cfif>
-			
+
 			<cfif Len(sField.CF_DataType)>
 				<cfset ArrayAppend(TableData,adjustColumnArgs(sField))>
 			</cfif>
@@ -269,15 +269,15 @@
 	<cfelse>
 		<cfthrow message="DataMgr can currently only support MS Access on ColdFusion MX 7 and above unless tables are loaded using loadXML(). Sorry for the trouble." type="DataMgr" detail="NoMSAccesSupport">
 	</cfif>
-	
+
 	<cfreturn TableData>
 </cffunction>
 
 <cffunction name="getCFDataType" access="public" returntype="string" output="no" hint="I return the cfqueryparam datatype from the database datatype.">
 	<cfargument name="type" type="string" required="yes" hint="The database data type.">
-	
+
 	<cfset var result = "">
-	
+
 	<cfswitch expression="#arguments.type#">
 		<cfcase value="binary,image,longbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
@@ -297,15 +297,15 @@
 		<cfcase value="uniqueidentifier"><cfset result = "CF_SQL_IDSTAMP"></cfcase>
 		<cfdefaultcase><cfset result = ""></cfdefaultcase>
 	</cfswitch>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getDBDataType" access="public" returntype="string" output="no" hint="I return the database datatype from the cfqueryparam datatype.">
 	<cfargument name="CF_Datatype" type="string" required="yes">
-	
+
 	<cfset var result = "">
-	
+
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "integer"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "bit"></cfcase>
@@ -327,7 +327,7 @@
 		<cfcase value="CF_SQL_VARCHAR"><cfset result = "varchar"></cfcase>
 		<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>
 	</cfswitch>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -339,16 +339,16 @@
 	<cfargument name="xmldata" type="string" required="yes" hint="XML data of tables to load into DataMgr follows. Schema: http://www.bryantwebconsulting.com/cfc/DataMgr.xsd">
 	<cfargument name="docreate" type="boolean" default="false" hint="I indicate if the table should be created in the database if it doesn't already exist.">
 	<cfargument name="addcolumns" type="boolean" default="false" hint="I indicate if missing columns should be be created.">
-	
+
 	<cfset var table = "">
 	<cfset var i = 0>
 	<cfset var tabledata = 0>
 	<cfset var fields = 0>
-	
+
 	<cfset super.loadXML(xmldata,docreate,addcolumns)>
-	
+
 	<cfset tabledata = getTableData()>
-	
+
 	<cfloop collection="#tabledata#" item="table">
 		<cfset fields = getFields(table)>
 		<cfloop index="i" from="1" to="#ArrayLen(fields)#" step="1">
@@ -357,16 +357,16 @@
 			</cfif>
 		</cfloop>
 	</cfloop>
-	
+
 </cffunction>
 
 <cffunction name="checkTable" access="private" returntype="boolean" output="no" hint="I check to see if the given table exists in the Datamgr.">
 	<cfargument name="tablename" type="string" required="yes">
-	
+
 	<cfif NOT StructKeyExists(variables.tables,arguments.tablename)>
 		<cfset loadTable(arguments.tablename)>
 	</cfif>
-	
+
 	<cfreturn true>
 </cffunction>
 
@@ -374,7 +374,7 @@
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
 	<cfargument name="tablealias" type="string" required="no">
-	
+
 	<cfset var sField = getField(arguments.tablename,arguments.field)>
 	<cfset var dtype = getEffectiveDataType(arguments.tablename,sField.Relation.field)>
 	<cfset var aSQL = ArrayNew(1)>
@@ -382,9 +382,9 @@
 	<cfset var sJoin = StructNew()>
 	<cfset var sArgs = StructNew()>
 	<cfset var temp = "">
-	
+
 	<cfset ArrayAppend(aSQL,"ABS(")>
-	
+
 	<cfswitch expression="#dtype#">
 	<cfcase value="numeric">
 		<cfset ArrayAppend(aSQL,"IIF(")>
@@ -405,33 +405,33 @@
 		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
 	</cfcase>
 	</cfswitch>
-	
+
 	<cfset ArrayAppend(aSQL,")")>
-	
-	<cfreturn aSQL>	
+
+	<cfreturn aSQL>
 </cffunction>
 
 <cffunction name="getInsertedIdentity" access="private" returntype="string" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="identfield" type="string" required="yes">
-	
+
 	<cfset var qCheckKey = 0>
 	<cfset var result = 0>
-	
+
 	<cfset qCheckKey = runSQL("SELECT TOP 1 #identfield# AS NewID FROM #arguments.tablename# ORDER BY #identfield# DESC")>
-	
+
 	<cfset result = qCheckKey.NewID>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getOrderbyFieldList" access="private" returntype="array" output="no">
-	
+
 	<cfset var adjustedfieldlist = "">
 	<cfset var orderarray = ArrayNew(1)>
 	<cfset var temp = "">
 	<cfset var sqlarray = ArrayNew(1)>
-	
+
 	<cfif Len(arguments.fieldlist)>
 		<cfloop list="#arguments.fieldlist#" index="temp">
 			<cfset adjustedfieldlist = ListAppend(adjustedfieldlist,escape(arguments.tablealias & '.' & temp))>
@@ -447,7 +447,7 @@
 	<cfelse>
 		<cfset ArrayAppend(sqlarray,"#escape(arguments.fieldlist)#")>
 	</cfif>
-	
+
 	<cfreturn sqlarray>
 </cffunction>
 
@@ -459,7 +459,7 @@
 	<cfif ListFindNoCase(strtypes,arguments.type)>
 		<cfset result = true>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -469,7 +469,7 @@
 	<cfargument name="fields" type="string" required="yes">
 	<cfargument name="unique" type="boolean" default="false">
 	<cfargument name="clustered" type="boolean" default="false">
-	
+
 </cffunction>
 
 </cfcomponent>
