@@ -43,13 +43,13 @@
 
 	<cfset var qFields = 0>
 
-	<cf_DMQuery name="qFields" DataMgr="#This#">
+	<cf_DMQuery name="qFields" DataMgr="#This#"><cfoutput>
 	SELECT		cols.COLUMN_NAME AS Field
 	FROM		<cfoutput>#Variables.dbprefix#</cfoutput>INFORMATION_SCHEMA.COLUMNS cols
 	WHERE		1 = 1
 		AND		cols.table_name = <cf_DMParam value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
 	ORDER BY	cols.table_name, Ordinal_Position
-	</cf_DMQuery>
+	</cfoutput></cf_DMQuery>
 
 	<cfreturn ValueList(qFields.Field)>
 </cffunction>

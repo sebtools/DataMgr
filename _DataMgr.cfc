@@ -173,7 +173,10 @@
 
 	//Make sure we include delimiter ahead of incoming sql if it is needed.
 	if ( Len(delim) AND ArrayLen(Arguments.Args["AdvSQL"][Arguments.key]) ) {
-		sql_start = Trim(Arguments.sql[1]);
+		if ( isSimpleValue(Arguments.sql[1]) ) {
+			sql_start = Trim(Arguments.sql[1]);
+		}
+
 		//If the SQL doesn't start with the delimiter, add it to the start
 		//Not adding it to the end of AdvSQL, just in case multiple things are messing with that at once.
 		if ( NOT ( Len(sql_start) GTE Len(delim) AND Left(sql_start,Len(delim)) EQ delim ) ) {
