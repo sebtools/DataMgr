@@ -4010,6 +4010,9 @@
 	<cfset var result = 0>
 	<cfset var sqlarray = ArrayNew(1)>
 	<cfset var ChangeUUID = CreateUUID()>
+	<cfset var sGetArgs = {"tablename":Arguments.tablename,"data":StructNew(),"fieldlist"=Arguments.fieldlist}>
+	<cfset var qBefore = 0>
+	<cfset var qAfter = 0>
 
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
@@ -4027,6 +4030,7 @@
 	<cfloop index="ii" from="1" to="#ArrayLen(pkfields)#" step="1">
 		<cfset ArrayAppend(sqlarray,"AND	#escape(pkfields[ii].ColumnName)# = ")>
 		<cfset ArrayAppend(sqlarray,sval(pkfields[ii],in))>
+		<cfset sGetArgs["data"][pkfields[ii].ColumnName] = in[pkfields[ii].ColumnName]>
 	</cfloop>
 	<cfset qGetUpdateRecord = runSQLArray(sqlarray)>
 
@@ -4038,6 +4042,12 @@
 		</cfloop>
 		<cfset throwDMError("No record exists for update criteria (#temp#).","NoUpdateRecord")>
 	</cfif>
+
+	<cfif NOT Len(Trim(sGetArgs.fieldlist))>
+		<cfset sGetArgs["fieldlist"] = StructKeyList(Arguments.data)>
+	</cfif>
+
+	<cfset qBefore = getRecord(ArgumentCollection=sGetArgs)>
 
 	<cfset sqlarray = updateRecordSQL(argumentCollection=arguments)>
 
@@ -4055,6 +4065,8 @@
 	<!--- Save any relations --->
 	<cfset saveRelations(arguments.tablename,in,pkfields[1],result)>
 
+	<cfset qAfter = getRecord(ArgumentCollection=sGetArgs)>
+
 	<!--- Log update --->
 	<cfif variables.doLogging AND NOT arguments.tablename EQ variables.logtable>
 		<cfinvoke method="logAction">
@@ -4066,7 +4078,7 @@
 		</cfinvoke>
 	</cfif>
 
-	<cfset announceEvent(tablename=arguments.tablename,action="afterUpdate",method="updateRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,sql=sqlarray,ChangeUUID=ChangeUUID)>
+	<cfset announceEvent(tablename=arguments.tablename,action="afterUpdate",method="updateRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,pkvalue=result,sql=sqlarray,ChangeUUID=ChangeUUID,before=qBefore,after=qAfter)>
 
 	<cfset setCacheDate()>
 
