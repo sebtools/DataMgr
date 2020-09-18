@@ -43,7 +43,7 @@
 
 	<cfset var qFields = 0>
 
-	<cf_DMQuery name="qFields" DataMgr="#This#"><cfoutput>
+	<cf_DMQuery name="qFields"><cfoutput>
 	SELECT		cols.COLUMN_NAME AS Field
 	FROM		<cfoutput>#Variables.dbprefix#</cfoutput>INFORMATION_SCHEMA.COLUMNS cols
 	WHERE		1 = 1
@@ -60,7 +60,7 @@
 	<cfset var qFields = 0>
 	<cfset var sResult = StructNew()>
 
-	<cf_DMQuery name="qFields" DataMgr="#This#">
+	<cf_DMQuery name="qFields">
 	SELECT		cols.table_name AS [table],
 				cols.COLUMN_NAME AS Field
 	FROM		<cfoutput>#Variables.dbprefix#</cfoutput>INFORMATION_SCHEMA.COLUMNS cols
@@ -255,7 +255,7 @@
 	<cfset var col = "">
 	<cfset var sql = "">
 
-	<cf_DMQuery name="qTables" DataMgr="#This#">
+	<cf_DMQuery name="qTables">
 	SELECT		cols.table_name AS [table],
 				cols.COLUMN_NAME AS Field,
 				cols.DATA_TYPE AS Type,
@@ -320,7 +320,7 @@
 
 	<cfset arguments.tablename = ListLast(arguments.tablename,".")>
 
-	<cf_DMQuery name="qStructure" DataMgr="#This#">
+	<cf_DMQuery name="qStructure">
 	SELECT
 				COLUMN_NAME AS Field,
 				DATA_TYPE AS Type,
@@ -339,7 +339,7 @@
 		<cfthrow message="Data Manager: No such table (#arguments.tablename#). Trying to load a table that doesn't exist." type="DataMgr">
 	</cfif>
 
-	<cf_DMQuery name="qPrimaryKeys" DataMgr="#This#">
+	<cf_DMQuery name="qPrimaryKeys">
 	SELECT		Column_Name
 	FROM		<cfoutput>#Variables.dbprefix#</cfoutput>INFORMATION_SCHEMA.TABLE_CONSTRAINTS constrains
 	INNER JOIN	<cfoutput>#Variables.dbprefix#</cfoutput>INFORMATION_SCHEMA.KEY_COLUMN_USAGE usages

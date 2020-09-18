@@ -43,6 +43,8 @@
 		<cfset variables.defaultdatabase = arguments.defaultdatabase>
 	</cfif>
 
+	<cfset variables.SmartCache = arguments.SmartCache>
+
 	<cfset Variables.dbprefix = "">
 	<cfset Variables.prefix = "">
 	<cfif StructKeyExists(arguments,"databasename")>
@@ -54,8 +56,7 @@
 		<cfset Variables.prefix = "#Variables.dbprefix#dbo.">
 	</cfif>
 
-
-	<cfset variables.SmartCache = arguments.SmartCache>
+	<cfset Variables.DataMgr = This>
 
 	<cfset variables.dbprops = getProps()>
 	<cfset variables.tables = StructNew()><!--- Used to internally keep track of table fields used by DataMgr --->
