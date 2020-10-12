@@ -494,8 +494,19 @@
 				</cfif>
 			</cfif>
 		</cfloop>--->
-
-		<cfset announceEvent(tablename=arguments.tablename,action="beforeDelete",method="deleteRecord",data=arguments.data,Args=Arguments,ChangeUUID=ChangeUUID)>
+		<cfinvoke
+			method="announceEvent"
+			tablename="#arguments.tablename#"
+			action="beforeDelete"
+			data="#arguments.data#"
+			Args="#Arguments#"
+			ChangeUUID="#ChangeUUID#"
+		>
+				<cfinvokeargument name="method" value="deleteRecord">
+			<cfif ArrayLen(pkfields) EQ 1 AND StructKeyExists(in,pkfields[1].ColumnName)>
+				<cfinvokeargument name="pkvalue" value="#in[pkfields[1].ColumnName]#">
+			</cfif>
+		</cfinvoke>
 
 		<!--- Look for onDelete cascade --->
 		<cfset sCascadeDeletions = getCascadeDeletions(tablename=arguments.tablename,data=arguments.data,qRecord=qRecord)>
@@ -546,6 +557,7 @@
 			<cfset sqlarray = ArrayNew(1)>
 			<cfset ArrayAppend(sqlarray,"DELETE FROM	#escape(Variables.prefix & arguments.tablename)# WHERE	1 = 1")>
 			<cfset ArrayAppend(sqlarray,getWhereSQL(argumentCollection=arguments))>
+
 			<cfset runSQLArray(sqlarray)>
 
 			<!--- Log delete --->
@@ -563,7 +575,22 @@
 
 		</cfif>
 
-		<cfset announceEvent(tablename=arguments.tablename,action="afterDelete",method="deleteRecord",data=arguments.data,Args=Arguments,ChangeUUID=ChangeUUID)>
+		<cfinvoke
+			method="announceEvent"
+			tablename="#arguments.tablename#"
+			action="afterDelete"
+			data="#arguments.data#"
+			Args="#Arguments#"
+			ChangeUUID="#ChangeUUID#"
+		>
+				<cfinvokeargument name="method" value="deleteRecord">
+			<cfif ArrayLen(pkfields) EQ 1 AND StructKeyExists(in,pkfields[1].ColumnName)>
+				<cfinvokeargument name="pkvalue" value="#in[pkfields[1].ColumnName]#">
+			</cfif>
+			<cfif isArray(sqlarray) AND ArrayLen(sqlarray)>
+				<cfinvokeargument name="sql" value="#sqlarray#">
+			</cfif>
+		</cfinvoke>
 
 		<cfset setCacheDate()>
 	</cfif>
