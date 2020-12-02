@@ -1883,33 +1883,7 @@
 				<cfset ArrayAppend(aSQL,getRecordsSQL(argumentCollection=sArgs))>
 			</cfcase>
 			<cfcase value="list">
-				<cfif StructKeyExists(sField.Relation,"join-table")>
-					<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["local-table-join-field"],tablealias=arguments.tablealias,useFieldAlias=false)>
-					<cfif Len(sField.Relation["local-table-join-field"])>
-						<cfset sField2 = getField(arguments.tablename,sField.Relation["local-table-join-field"])>
-					<cfelse>
-						<cfset sField2 = StructNew()>
-					</cfif>
-					<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["local-table-join-field"] )> --->
-				<cfelse>
-					<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["join-field-local"],tablealias=arguments.tablealias,useFieldAlias=false)>
-					<cfif Len(sField.Relation["join-field-local"])>
-						<cfset sField2 = getField(arguments.tablename,sField.Relation["join-field-local"])>
-					<cfelse>
-						<cfset sField2 = StructNew()>
-					</cfif>
-					<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["join-field-local"] )> --->
-				</cfif>
-				<cfset temp = readableSQL(temp)>
-				<cfif Len(temp)>
-					<cfif StructKeyExists(sField2,"Relation") AND StructKeyExists(sField2.Relation,"type") AND sField2.Relation.type EQ "concat">
-						<cfset ArrayAppend(aSQL,temp)>
-					<cfelse>
-						<cfset ArrayAppend(aSQL,concat(temp))>
-					</cfif>
-				<cfelse>
-					<cfset ArrayAppend(aSQL,"''")>
-				</cfif>
+				<cfset ArrayAppend(aSQL,getFieldSQL_List(argumentCollection=arguments))>
 			</cfcase>
 			<cfcase value="concat">
 				<cfset ArrayAppend(aSQL,"#concatFields(arguments.tablename,sField.Relation['fields'],sField.Relation['delimiter'],arguments.tablealias)#")>
@@ -2004,6 +1978,47 @@
 			<cfinvokeargument name="tablealias" value="#arguments.tablename#">
 		</cfif>
 	</cfinvoke>
+
+	<cfreturn aSQL>
+</cffunction>
+
+<cffunction name="getFieldSQL_List" access="public" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="tablealias" type="string" required="no">
+
+	<cfset var sField = getField(arguments.tablename,arguments.field)>
+	<cfset var aSQL = []>
+	<cfset var temp = 0>
+	<cfset var sField2 = 0>
+
+	<cfif StructKeyExists(sField.Relation,"join-table")>
+		<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["local-table-join-field"],tablealias=arguments.tablealias,useFieldAlias=false)>
+		<cfif Len(sField.Relation["local-table-join-field"])>
+			<cfset sField2 = getField(arguments.tablename,sField.Relation["local-table-join-field"])>
+		<cfelse>
+			<cfset sField2 = StructNew()>
+		</cfif>
+		<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["local-table-join-field"] )> --->
+	<cfelse>
+		<cfset temp = getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation["join-field-local"],tablealias=arguments.tablealias,useFieldAlias=false)>
+		<cfif Len(sField.Relation["join-field-local"])>
+			<cfset sField2 = getField(arguments.tablename,sField.Relation["join-field-local"])>
+		<cfelse>
+			<cfset sField2 = StructNew()>
+		</cfif>
+		<!--- <cfset temp = escape( arguments.tablealias & "." & sField.Relation["join-field-local"] )> --->
+	</cfif>
+	<cfset temp = readableSQL(temp)>
+	<cfif Len(temp)>
+		<cfif StructKeyExists(sField2,"Relation") AND StructKeyExists(sField2.Relation,"type") AND sField2.Relation.type EQ "concat">
+			<cfset ArrayAppend(aSQL,temp)>
+		<cfelse>
+			<cfset ArrayAppend(aSQL,concat(temp))>
+		</cfif>
+	<cfelse>
+		<cfset ArrayAppend(aSQL,"''")>
+	</cfif>
 
 	<cfreturn aSQL>
 </cffunction>
@@ -4917,6 +4932,11 @@
 	</cfloop>
 
 	<cfscript>
+	if ( StructKeyHasLen(sResult,"type") AND sResult["type"] EQ "list" ) {
+		if ( NOT StructKeyHasLen(sResult,"delimiter") ) {
+			sResult["delimiter"] = ",";
+		}
+	}
 	if ( StructKeyExists(sResult,"join-table") ) {
 		if ( StructKeyExists(sResult,"join-field") AND NOT StructKeyExists(sResult,"join-field-local") ) {
 			sResult["join-field-local"] = sResult["join-field"];

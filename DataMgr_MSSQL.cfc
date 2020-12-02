@@ -966,6 +966,41 @@
 	<cfreturn qIndexes>
 </cffunction>
 
+
+<cffunction name="getFieldSQL_List" access="public" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="tablealias" type="string" required="no">
+
+	<cfset var sField = getField(arguments.tablename,arguments.field)>
+	<cfset var aSQL = []>
+	<cfset var temp = 0>
+	<cfset var sField2 = 0>
+	<cfset var sRelation = expandRelationStruct(sField.Relation)>
+
+	<cf_DMSQL name="aSQL">
+		STUFF	(
+			(
+				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(varchar,t.<cf_DMObject name="#sRelation['field']#">)
+				FROM		<cf_DMObject name="#sRelation['table']#"> t
+			<cfif StructKeyExists(sRelation,"join-table")>
+				INNER JOIN	<cf_DMObject name="#sRelation['join-table']#"> jt
+					ON		t.<cf_DMObject name="#sRelation['remote-table-join-field']#"> = jt.<cf_DMObject name="#sRelation['join-table-field-remote']#">
+				WHERE		1 = 1
+					AND		jt.<cf_DMObject name="#sRelation['join-table-field-local']#"> = <cf_DMObject name="#Arguments.tablealias#">.<cf_DMObject name="#sRelation['local-table-join-field']#">
+			<cfelse>
+				WHERE		1 = 1
+					AND		t.<cf_DMObject name="#sRelation['join-field-remote']#"> = <cf_DMObject name="#Arguments.tablealias#">.<cf_DMObject name="#sRelation['join-field-local']#">
+			</cfif>
+				FOR XML PATH('')
+			)
+		,1,1,'')
+	</cf_DMSQL>
+
+	<cfreturn aSQL>
+</cffunction>
+
+
 <cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
 
@@ -1071,6 +1106,13 @@
 	</cfif>
 
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="applyListRelations" access="public" returntype="query" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="query" type="query" required="yes">
+
+	<cfreturn Arguments.query>
 </cffunction>
 
 <cffunction name="isStringType" access="private" returntype="boolean" output="no" hint="I indicate if the given datatype is valid for string data.">
