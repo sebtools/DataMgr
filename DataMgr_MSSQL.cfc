@@ -981,7 +981,7 @@
 	<cf_DMSQL name="aSQL">
 		STUFF	(
 			(
-				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(varchar,t.<cf_DMObject name="#sRelation['field']#">)
+				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(nvarchar,t.<cf_DMObject name="#sRelation['field']#">)
 				FROM		<cf_DMObject name="#sRelation['table']#"> t
 			<cfif StructKeyExists(sRelation,"join-table")>
 				INNER JOIN	<cf_DMObject name="#sRelation['join-table']#"> jt
