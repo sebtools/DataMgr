@@ -1301,6 +1301,7 @@
 	<cfargument name="FunctionAlias" type="string" required="false" hint="An alias for the column returned by a function (only if function argument is used).">
 	<cfargument name="Distinct" type="boolean" default="false">
 	<cfargument name="WithDeletedRecords" type="boolean" default="false">
+	<cfargument name="noorder" type="string" default="false" hint="If true then skip any ordering in the query.">
 
 	<cfset var qRecords = 0><!--- The recordset to return --->
 	<cfset var aSQL = getRecordsSQL(argumentCollection=arguments)>
@@ -1343,6 +1344,7 @@
 	<cfargument name="filters" type="array">
 	<cfargument name="offset" type="numeric" default="0">
 	<cfargument name="FunctionAlias" type="string" required="false" hint="An alias for the column returned by a function (only if function argument is used).">
+	<cfargument name="noorder" type="string" default="false" hint="If true then skip any ordering in the query.">
 
 	<cfset var sqlarray = ArrayNew(1)>
 	<cfset var aOrderBySQL = 0>
