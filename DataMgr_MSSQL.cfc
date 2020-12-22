@@ -966,7 +966,6 @@
 	<cfreturn qIndexes>
 </cffunction>
 
-
 <cffunction name="getFieldSQL_List" access="public" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
@@ -977,11 +976,21 @@
 	<cfset var temp = 0>
 	<cfset var sField2 = 0>
 	<cfset var sRelation = expandRelationStruct(sField.Relation)>
+	<cfset var sRelationField = getField(sRelation.table,sRelation.field)>
+	<cfset var length = "">
+
+	<cfif StructKeyExists(sRelationField,"Length")>
+		<cfset length = sRelationField["Length"]>
+	</cfif>
+
+	<cfif NOT Val(length)>
+		<cfset length = "max">
+	</cfif>
 
 	<cf_DMSQL name="aSQL">
 		STUFF	(
 			(
-				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(nvarchar,t.<cf_DMObject name="#sRelation['field']#">)
+				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(nvarchar(<cfoutput>#length#</cfoutput>),t.<cf_DMObject name="#sRelation['field']#">)
 				FROM		<cf_DMObject name="#sRelation['table']#"> t
 			<cfif StructKeyExists(sRelation,"join-table")>
 				INNER JOIN	<cf_DMObject name="#sRelation['join-table']#"> jt
@@ -999,7 +1008,6 @@
 
 	<cfreturn aSQL>
 </cffunction>
-
 
 <cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
