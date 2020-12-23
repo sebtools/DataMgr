@@ -990,7 +990,12 @@
 	<cf_DMSQL name="aSQL">
 		STUFF	(
 			(
-				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>' + CONVERT(nvarchar(<cfoutput>#length#</cfoutput>),t.<cf_DMObject name="#sRelation['field']#">)
+				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>'
+							+
+							CONVERT(
+								nvarchar(<cfoutput>#length#</cfoutput>),
+								<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],tablealias='t',useFieldAlias=false)#" />
+							)
 				FROM		<cf_DMObject name="#sRelation['table']#"> t
 			<cfif StructKeyExists(sRelation,"join-table")>
 				INNER JOIN	<cf_DMObject name="#sRelation['join-table']#"> jt
