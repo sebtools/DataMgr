@@ -990,7 +990,11 @@
 	<cf_DMSQL name="aSQL">
 		STUFF	(
 			(
-				SELECT		'<cfoutput>#sRelation['delimiter']#</cfoutput>'
+				SELECT
+						<cfif StructKeyExists(sRelation,"distinct") AND sRelation["distinct"] IS true>
+							DISTINCT
+						</cfif>
+							'<cfoutput>#sRelation['delimiter']#</cfoutput>'
 							+
 							CONVERT(
 								nvarchar(<cfoutput>#length#</cfoutput>),
@@ -1005,6 +1009,14 @@
 			<cfelse>
 				WHERE		1 = 1
 					AND		t.<cf_DMObject name="#sRelation['join-field-remote']#"> = <cf_DMObject name="#Arguments.tablealias#">.<cf_DMObject name="#sRelation['join-field-local']#">
+			</cfif>
+			<cfif NOT ( StructKeyExists(sRelation,"distinct") AND sRelation["distinct"] IS true )>
+			ORDER BY
+						<cfif StructKeyExists(sRelation,"sort-field") AND Len(sRelation["sort-field"])>
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['sort-field'],tablealias='t',useFieldAlias=false)#" />
+						<cfelse>
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],tablealias='t',useFieldAlias=false)#" />
+						</cfif>
 			</cfif>
 				FOR XML PATH('')
 			)
