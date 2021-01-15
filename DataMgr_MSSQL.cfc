@@ -979,6 +979,16 @@
 	<cfset var sRelationField = getField(sRelation.table,sRelation.field)>
 	<cfset var length = "">
 
+	<!--- Make sure we have a table alias if we need it. --->
+	<cfif NOT StructKeyExists(sRelation,"tablealias")>
+		<cfset sRelation["tablealias"] = sRelation["table"]>
+	</cfif>
+
+	<!--- If this is a self-referential relationship then we need to make sure that the table alias doesn't match the outer reference. --->
+	<cfif sRelation["tablealias"] EQ Arguments.tablealias>
+		<cfset sRelation["tablealias"] &= "_inner">
+	</cfif>
+
 	<cfif StructKeyExists(sRelationField,"Length")>
 		<cfset length = sRelationField["Length"]>
 	</cfif>
@@ -998,24 +1008,30 @@
 							+
 							CONVERT(
 								nvarchar(<cfoutput>#length#</cfoutput>),
-								<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],tablealias='t',useFieldAlias=false)#" />
+								<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],tablealias=sRelation['tablealias'],useFieldAlias=false)#" />
 							)
-				FROM		<cf_DMObject name="#sRelation['table']#"> t
+				FROM		<cf_DMObject name="#sRelation['table']#"><cfif sRelation['tablealias'] NEQ sRelation['table']> <cf_DMObject name="#sRelation['tablealias']#"></cfif>
 			<cfif StructKeyExists(sRelation,"join-table")>
 				INNER JOIN	<cf_DMObject name="#sRelation['join-table']#"> jt
-					ON		t.<cf_DMObject name="#sRelation['remote-table-join-field']#"> = jt.<cf_DMObject name="#sRelation['join-table-field-remote']#">
+					ON		<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['remote-table-join-field'],tablealias=sRelation['tablealias'],useFieldAlias=false)#" />
+							=
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['join-table'],field=sRelation['join-table-field-remote'],useFieldAlias=false,tablealias='jt')#" />
 				WHERE		1 = 1
-					AND		jt.<cf_DMObject name="#sRelation['join-table-field-local']#"> = <cf_DMObject name="#Arguments.tablealias#">.<cf_DMObject name="#sRelation['local-table-join-field']#">
+					AND		<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['join-table'],field=sRelation['join-table-field-local'],useFieldAlias=false,tablealias='jt')#" />
+							=
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=Arguments.tablename,field=sRelation['local-table-join-field'],useFieldAlias=false,tablealias=Arguments.tablealias)#" />
 			<cfelse>
 				WHERE		1 = 1
-					AND		t.<cf_DMObject name="#sRelation['join-field-remote']#"> = <cf_DMObject name="#Arguments.tablealias#">.<cf_DMObject name="#sRelation['join-field-local']#">
+					AND		<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['join-field-remote'],tablealias=sRelation['tablealias'],useFieldAlias=false)#" />
+							=
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=Arguments.tablename,field=sRelation['join-field-local'],tablealias=Arguments.tablealias,useFieldAlias=false)#" />
 			</cfif>
 			<cfif NOT ( StructKeyExists(sRelation,"distinct") AND sRelation["distinct"] IS true )>
 			ORDER BY
 						<cfif StructKeyExists(sRelation,"sort-field") AND Len(sRelation["sort-field"])>
-							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['sort-field'],tablealias='t',useFieldAlias=false)#" />
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['sort-field'],useFieldAlias=false)#" />
 						<cfelse>
-							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],tablealias='t',useFieldAlias=false)#" />
+							<cf_DMSQL sql="#getFieldSelectSQL(tablename=sRelation['table'],field=sRelation['field'],useFieldAlias=false)#" />
 						</cfif>
 			</cfif>
 				FOR XML PATH('')
