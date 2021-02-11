@@ -20,7 +20,7 @@
 	<cfset var qDatabaseVersion = 0>
 
 	<cfif NOT StructKeyExists(variables,"DatabaseVersion")>
-		<cfset qDatabaseVersion = runSQL("SELECT SERVERPROPERTY('productversion') AS VersionNum")>
+		<cfset qDatabaseVersion = runSQL("SELECT CAST(SERVERPROPERTY('productversion') AS VARCHAR(255)) AS VersionNum")>
 		<cfset variables.DatabaseVersion = ListFirst(qDatabaseVersion.VersionNum,".")>
 	</cfif>
 
