@@ -1571,11 +1571,11 @@
 		</cfloop>
 	</cfif>
 
-	<cfif arguments.maxrows GT 0>
-		<cfset ArrayAppend(sqlarray,getMaxRowsPrefix(arguments.maxrows,arguments.offset))>
-	</cfif>
 	<cfif StructKeyExists(arguments,"distinct") AND arguments.distinct IS true>
 		<cfset ArrayAppend(sqlarray,"DISTINCT")>
+	</cfif>
+	<cfif arguments.maxrows GT 0>
+		<cfset ArrayAppend(sqlarray,getMaxRowsPrefix(arguments.maxrows,arguments.offset))>
 	</cfif>
 	<cfif Len(arguments.function)>
 		<cfif Len(arguments.fieldlist)>
