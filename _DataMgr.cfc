@@ -192,6 +192,28 @@
 
 </cffunction>
 
+<cffunction name="addRelationListValue" access="public" returntype="void" output="no" hint="I add a value to a list field if it doesn't already exist. Can be used with any list value (not just relation fields).">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="value" type="string" required="yes">
+
+	<cfset var pklist = getPrimaryKeyFieldNames(arguments.tablename)>
+	<cfset var sPKData = {"#pklist#":Arguments.pkvalue}>
+	<cfset var qRecord = getRecords(tablename=Arguments.tablename,data=sPKData,fieldlist=Arguments.field)>
+	<cfset var OldValue = qRecord[Arguments.field][1]>
+	<cfset var sData = StructCopy(sPKData)>
+
+	<cfif NOT ListFindNoCase(OldValue,Arguments.value)>
+		<cfset sData[Arguments.field] = ListAppend(OldValue,Arguments.value)>
+		<cfset saveRecord(
+			tablename=Arguments.tablename,
+			data=sData
+		)>
+	</cfif>
+
+</cffunction>
+
 <cffunction name="announceEvent" access="private" returntype="void" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="action" type="string" required="yes" hint="The action taken.">
