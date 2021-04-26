@@ -393,7 +393,8 @@
 		<cfcase value="sql_variant,sysname"><cfset result = ""></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="char"><cfset result = "CF_SQL_CHAR"></cfcase>
-		<cfcase value="date,datetime"><cfset result = "CF_SQL_DATE"></cfcase>
+		<cfcase value="date"><cfset result = "CF_SQL_DATE"></cfcase>
+		<cfcase value="datetime"><cfset result = "CF_SQL_TIMESTAMP"></cfcase>
 		<cfcase value="decimal"><cfset result = "CF_SQL_DECIMAL"></cfcase>
 		<cfcase value="float"><cfset result = "CF_SQL_FLOAT"></cfcase>
 		<cfcase value="binary,image,varbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
@@ -408,7 +409,6 @@
 		<cfcase value="smallint"><cfset result = "CF_SQL_SMALLINT"></cfcase>
 		<cfcase value="smallmoney"><cfset result = "CF_SQL_MONEY4"></cfcase>
 		<cfcase value="text"><cfset result = "CF_SQL_LONGVARCHAR"></cfcase>
-		<cfcase value="timestamp"><cfset result = "CF_SQL_TIMESTAMP"></cfcase>
 		<cfcase value="tinyint"><cfset result = "CF_SQL_TINYINT"></cfcase>
 		<cfcase value="uniqueidentifier"><cfset result = "CF_SQL_IDSTAMP"></cfcase>
 		<cfcase value="varchar">
@@ -454,7 +454,7 @@
 		<cfcase value="CF_SQL_NUMERIC"><cfset result = "numeric"></cfcase>
 		<cfcase value="CF_SQL_REAL"><cfset result = "real"></cfcase>
 		<cfcase value="CF_SQL_SMALLINT"><cfset result = "smallint"></cfcase>
-		<cfcase value="CF_SQL_TIMESTAMP"><cfset result = "timestamp"></cfcase>
+		<cfcase value="CF_SQL_TIMESTAMP"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_TINYINT"><cfset result = "tinyint"></cfcase>
 		<cfcase value="CF_SQL_VARCHAR"><cfset result = "varchar"></cfcase>
 		<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>

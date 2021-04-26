@@ -5206,8 +5206,11 @@
 	<cfcase value="CF_SQL_CHAR,CF_SQL_IDSTAMP,CF_SQL_VARCHAR">
 		<cfset result = "string">
 	</cfcase>
-	<cfcase value="CF_SQL_DATE,CF_SQL_DATETIME,CF_SQL_TIMESTAMP">
+	<cfcase value="CF_SQL_DATE">
 		<cfset result = "date">
+	</cfcase>
+	<cfcase value="CF_SQL_DATETIME,CF_SQL_TIMESTAMP">
+		<cfset result = "datetime">
 	</cfcase>
 	<cfcase value="CF_SQL_LONGVARCHAR,CF_SQL_CLOB">
 		<cfset result = "invalid">
