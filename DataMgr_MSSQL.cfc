@@ -998,6 +998,7 @@
 	</cfif>
 
 	<cf_DMSQL name="aSQL">
+	REPLACE(
 		STUFF	(
 			(
 				SELECT
@@ -1036,7 +1037,10 @@
 			</cfif>
 				FOR XML PATH('')
 			)
-		,1,1,'')
+		,1,1,''),
+		'&amp;',
+		'&'
+	)
 	</cf_DMSQL>
 
 	<cfreturn aSQL>
