@@ -5052,27 +5052,31 @@
 	<cfset var bCheckTable = checkTable(arguments.tablename)>
 	<cfset var relates = variables.tables[arguments.tablename]>
 	<cfset var ii = 0>
+	<cfset var sFillOut = 0>
 
 	<cfif NOT ( StructKeyExists(variables.tableprops[arguments.tablename],"fillOutJoinTableRelations") )>
 		<cfloop index="ii" from="1" to="#ArrayLen(relates)#" step="1">
 			<cfif StructKeyExists(relates[ii],"Relation")>
 				<cfif
 						StructKeyExists(relates[ii].Relation,"table")
-					AND	StructKeyExists(relates[ii].Relation,"join-table")>
+					AND	StructKeyExists(relates[ii].Relation,"join-table")
+				>
 					<cfset checkTable(relates[ii].Relation["table"])>
 					<cfset checkTable(relates[ii].Relation["join-table"])>
+					<cfset sFillOut = {}>
 					<cfif NOT ( StructKeyExists(relates[ii].Relation,"join-table-field-local") AND Len(relates[ii].Relation["join-table-field-local"]) )>
-						<cfset variables.tables[arguments.tablename][ii].Relation["join-table-field-local"] = getPrimaryKeyFieldName(arguments.tablename)>
+						<cfset sFillOut["join-table-field-local"] = getPrimaryKeyFieldName(arguments.tablename)>
 					</cfif>
 					<cfif NOT ( StructKeyExists(relates[ii].Relation,"join-table-field-remote") AND Len(relates[ii].Relation["join-table-field-remote"]) )>
-						<cfset variables.tables[arguments.tablename][ii].Relation["join-table-field-remote"] = getPrimaryKeyFieldName(relates[ii].Relation["table"])>
+						<cfset sFillOut["join-table-field-remote"] = getPrimaryKeyFieldName(relates[ii].Relation["table"])>
 					</cfif>
 					<cfif NOT ( StructKeyExists(relates[ii].Relation,"local-table-join-field") AND Len(relates[ii].Relation["local-table-join-field"]) )>
-						<cfset variables.tables[arguments.tablename][ii].Relation["local-table-join-field"] = getPrimaryKeyFieldName(arguments.tablename)>
+						<cfset sFillOut["local-table-join-field"] = getPrimaryKeyFieldName(arguments.tablename)>
 					</cfif>
 					<cfif NOT ( StructKeyExists(relates[ii].Relation,"remote-table-join-field") AND Len(relates[ii].Relation["remote-table-join-field"]) )>
-						<cfset variables.tables[arguments.tablename][ii].Relation["remote-table-join-field"] = getPrimaryKeyFieldName(relates[ii].Relation["table"])>
+						<cfset sFillOut["remote-table-join-field"] = getPrimaryKeyFieldName(relates[ii].Relation["table"])>
 					</cfif>
+					<cfset StructAppend(variables.tables[arguments.tablename][ii].Relation,sFillOut)>
 				</cfif>
 			</cfif>
 		</cfloop>
