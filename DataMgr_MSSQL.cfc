@@ -1049,61 +1049,105 @@
 <cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
 
-	<cfset var aSQL = Super.cleanSQLArray(arguments.sqlarray)>
-	<cfset var ii = 0>
-	<cfset var sParams = StructNew()>
-	<cfset var sDeclares = StructNew()>
-	<cfset var str = "">
-	<cfset var name = "">
+	<cfscript>
+	var aSQL = Super.cleanSQLArray(Arguments.sqlarray);
+	var ii = 0;
+	var sParams = StructNew();
+	var sDeclares = StructNew();
+	var str = "";
+	var name = "";
+	var isList = false;
+	var sNewParam = 0;
+	var jj = 0;
+	var vv = 0;
 
-	<cfloop index="ii" from="1" to="#ArrayLen(aSQL)#" step="1">
-		<!--- Check for existing named parameters in SQL. --->
-		<cfif
-				IsSimpleValue(aSQL[ii])
-			AND	ReFindNoCase("DECLARE @\w[\w\d]*\b",aSQL[ii],1)
-			AND	ii LT ArrayLen(aSQL)
-			AND isStruct(aSQL[ii+1])
-		>
-			<cfset name = Trim(ReplaceNoCase(aSQL[ii],"DECLARE",""))>
-			<cfset name = ReplaceNoCase(ListFirst(name," "),"@","","ONE")>
-			<cfset sParams[name] = aSQL[ii+1]>
-			<cfset sDeclares[name] = true>
-		<cfelseif
-				isStruct(aSQL[ii]) AND StructKeyExists(aSQL[ii],"name")
-			AND	NOT ( StructKeyExists(aSQL[ii],"list") AND aSQL[ii].list IS true )
-		>
-			<cfif StructKeyExists(sParams,aSQL[ii].name)>
-				<!---  --->
-				<cfif NOT (
+	for ( ii=1; ii <= ArrayLen(aSQL); ii++ ) {
+		// Check for existing named parameters in SQL.
+		if (
+			IsSimpleValue(aSQL[ii])
+			AND
+			ReFindNoCase("DECLARE @\w[\w\d]*\b",aSQL[ii],1)
+			AND
+			ii LT ArrayLen(aSQL)
+			AND
+			isStruct(aSQL[ii+1])
+		) {
+			name = Trim(ReplaceNoCase(aSQL[ii],"DECLARE",""));
+			name = ReplaceNoCase(ListFirst(name," "),"@","","ONE");
+			sParams[name] = aSQL[ii+1];
+			sDeclares[name] = true;
+		} else if (
+			isStruct(aSQL[ii])
+			AND
+			StructKeyExists(aSQL[ii],"name")
+		) {
+			isList = ( isStruct(aSQL[ii]) AND StructKeyExists(aSQL[ii],"list") AND aSQL[ii].list IS true );
+			if ( StructKeyExists(sParams,aSQL[ii].name) ) {
+				//
+				if (
+					NOT (
 						( sParams[aSQL[ii].name].CFSQLTYPE EQ aSQL[ii].CFSQLTYPE )
-					AND	( sParams[aSQL[ii].name].value EQ aSQL[ii].value )
-				)>
-					<cfset throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match.")>
-				</cfif>
-			<cfelse>
-				<cfset sParams[aSQL[ii].name] = aSQL[ii]>
-			</cfif>
-			<cfif NOT (
-					ii GT 1
-				AND	aSQL[ii-1] CONTAINS "DECLARE @#aSQL[ii].name#"
-			)>
-			<cfset aSQL[ii] = "@#aSQL[ii].name#">
-			</cfif>
-		</cfif>
-	</cfloop>
+						AND
+						( sParams[aSQL[ii].name].value EQ aSQL[ii].value )
+					)
+				) {
+					throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match.");
+				}
+			} else {
+				sParams[aSQL[ii].name] = aSQL[ii];
+			}
+			if (
+					NOT (
+						ii GT 1
+						AND
+						aSQL[ii-1] CONTAINS "DECLARE @#aSQL[ii].name#"
+					)
+			) {
+				if ( isList ) {
+					aSQL[ii] = "SELECT val FROM @#aSQL[ii].name#";
+				} else {
+					aSQL[ii] = "@#aSQL[ii].name#";
+				}
+			}
+		}
+	}
 
-	<cfloop item="ii" collection="#sParams#">
-		<cfif NOT StructKeyExists(sDeclares,ii)>
-			<cfset str = "DECLARE @#ii# #getDBDataType(sParams[ii].CFSQLTYPE)#">
-			<cfif isStringType(getDBDataType(sParams[ii].CFSQLTYPE))>
-				<cfset str = "#str#(#sParams[ii].MaxLength#)">
-			</cfif>
-			<cfset str = "#str# = ">
-			<cfset ArrayPrepend(aSQL,"#chr(10)##chr(13)#")>
-			<cfset ArrayPrepend(aSQL,sParams[ii])>
-			<cfset ArrayPrepend(aSQL,str)>
-		</cfif>
-	</cfloop>
+	for ( ii in sParams ) {
+		if ( NOT StructKeyExists(sDeclares,ii) ) {
+			isList = ( isStruct(sParams[ii]) AND StructKeyExists(sParams[ii],"list") AND sParams[ii].list IS true );
+			if ( isList ) {
+				for ( jj = ListLen(sParams[ii].value); jj >= 1; jj-- ) {
+					vv = ListGetAt(sParams[ii].value,jj);
+					sNewParam = StructCopy(sParams[ii]);
+					StructDelete(sNewParam,"Name");
+					sNewParam["List"] = false;
+					sNewParam["Value"] = vv;
+					ArrayPrepend(aSQL,")");
+					ArrayPrepend(aSQL,StructCopy(sNewParam));
+					ArrayPrepend(aSQL," (");
+					if ( jj > 1 ) {
+						ArrayPrepend(aSQL,",");
+					}
+				}
+				str = "DECLARE @#ii# table (val #getDBDataType(sParams[ii].CFSQLTYPE)#";
+				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
+					str = "#str#(#sParams[ii].MaxLength#)";
+				}
+				str = "#str#) INSERT @#ii#(val) values";
+				ArrayPrepend(aSQL,str);
+			} else {
+				str = "DECLARE @#ii# #getDBDataType(sParams[ii].CFSQLTYPE)#";
+				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
+					str = "#str#(#sParams[ii].MaxLength#)";
+				}
+				str = "#str# = ";
+				ArrayPrepend(aSQL,"#chr(10)##chr(13)#");
+				ArrayPrepend(aSQL,sParams[ii]);
+				ArrayPrepend(aSQL,str);
+			}
+		}
+	}
+	</cfscript>
 
 	<cfreturn aSQL>
 </cffunction>
