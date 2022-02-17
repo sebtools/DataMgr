@@ -463,6 +463,61 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getEffectiveFieldDataType" access="private" returntype="string" output="no" hint="I get the generic ColdFusion data type for the given field.">
+	<cfargument name="field" type="struct" required="yes">
+	<cfargument name="isInWhere" type="boolean" default="false">
+
+	<cfset var sField = arguments.field>
+	<cfset var result = "invalid">
+
+	<cfif StructKeyExists(sField,"Relation") AND StructKeyExists(sField.Relation,"type")>
+		<cfswitch expression="#sField.Relation.type#">
+		<cfcase value="label">
+			<cfset result = getEffectiveDataType(sField.Relation.table,sField.Relation.field)>
+		</cfcase>
+		<cfcase value="concat">
+			<cfset result = "string">
+		</cfcase>
+		<cfcase value="list">
+			<cfif isInWhere>
+				<cfset result = getEffectiveDataType(sField.Relation.table,sField.Relation.field)>
+			<cfelse>
+				<cfset result = "invalid">
+			</cfif>
+		</cfcase>
+		<cfcase value="avg,count,max,min,sum">
+			<cfset result = "numeric">
+		</cfcase>
+		<cfcase value="has">
+			<cfset result = "boolean">
+		</cfcase>
+		<cfcase value="math">
+			<cfset result = "numeric"><!--- Unless I figure out datediff --->
+		</cfcase>
+		<cfcase value="now">
+			<cfset result = "date">
+		</cfcase>
+		<cfcase value="custom">
+			<cfif StructKeyExists(sField.Relation,"CF_Datatype")>
+				<cfset result = getGenericType(sField.Relation.CF_Datatype)>
+			<cfelse>
+				<cfset result = "invalid">
+			</cfif>
+		</cfcase>
+		</cfswitch>
+	<cfelseif StructKeyExists(sField,"CF_Datatype")>
+		<cfset result = getGenericType(sField.CF_Datatype)>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getEffectiveFieldDataType_list" access="private" returntype="string" output="no" hint="I get the generic ColdFusion data type for the given field.">
+	<cfargument name="field" type="struct" required="yes">
+
+	<cfreturn "string">
+</cffunction>
+
 <cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
