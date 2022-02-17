@@ -1113,9 +1113,8 @@
 	var name = "";
 	var isList = false;
 	var sNewParam = 0;
-	var type = "";
-	var type_str = "";
-	var val_str = "";
+	var jj = 0;
+	var vv = 0;
 
 	for ( ii=1; ii <= ArrayLen(aSQL); ii++ ) {
 		// Check for existing named parameters in SQL.
@@ -1147,7 +1146,7 @@
 						( sParams[aSQL[ii].name].value EQ aSQL[ii].value )
 					)
 				) {
-					throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match (existing: #sParams[aSQL[ii].name].value#[#sParams[aSQL[ii].name].CFSQLTYPE#], current: #aSQL[ii].value#[#aSQL[ii].CFSQLTYPE#]).");
+					throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match.");
 				}
 			} else {
 				sParams[aSQL[ii].name] = aSQL[ii];
@@ -1171,23 +1170,32 @@
 	for ( ii in sParams ) {
 		if ( NOT StructKeyExists(sDeclares,ii) ) {
 			isList = ( isStruct(sParams[ii]) AND StructKeyExists(sParams[ii],"list") AND sParams[ii].list IS true );
-			type = getDBDataType(sParams[ii].CFSQLTYPE);
-			if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
-				type_str = "#type#(#sParams[ii].MaxLength#)";
-			} else {
-				type_str = type;
-			}
 			if ( isList ) {
-				sNewParam = StructCopy(sParams[ii]);
-				StructDelete(sNewParam,"Name");
-				StructDelete(sNewParam,"list");
-				sNewParam["cfsqltype"] = "cf_sql_varchar";
-
-				ArrayPrepend(aSQL,", ',');");
-				ArrayPrepend(aSQL,StructCopy(sNewParam));
-				ArrayPrepend(aSQL,"DECLARE @#ii# TABLE(val #type_str#) INSERT INTO @#ii# (val) SELECT value AS val FROM STRING_SPLIT(");
+				for ( jj = ListLen(sParams[ii].value); jj >= 1; jj-- ) {
+					vv = ListGetAt(sParams[ii].value,jj);
+					sNewParam = StructCopy(sParams[ii]);
+					StructDelete(sNewParam,"Name");
+					sNewParam["List"] = false;
+					sNewParam["Value"] = vv;
+					ArrayPrepend(aSQL,")");
+					ArrayPrepend(aSQL,StructCopy(sNewParam));
+					ArrayPrepend(aSQL," (");
+					if ( jj > 1 ) {
+						ArrayPrepend(aSQL,",");
+					}
+				}
+				str = "DECLARE @#ii# table (val #getDBDataType(sParams[ii].CFSQLTYPE)#";
+				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
+					str = "#str#(#sParams[ii].MaxLength#)";
+				}
+				str = "#str#) INSERT @#ii#(val) values";
+				ArrayPrepend(aSQL,str);
 			} else {
-				str = "DECLARE @#ii# #type_str# = ";
+				str = "DECLARE @#ii# #getDBDataType(sParams[ii].CFSQLTYPE)#";
+				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
+					str = "#str#(#sParams[ii].MaxLength#)";
+				}
+				str = "#str# = ";
 				ArrayPrepend(aSQL,"#chr(10)##chr(13)#");
 				ArrayPrepend(aSQL,sParams[ii]);
 				ArrayPrepend(aSQL,str);
