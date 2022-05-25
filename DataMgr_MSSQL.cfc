@@ -1101,6 +1101,69 @@
 	<cfreturn aSQL>
 </cffunction>
 
+<cffunction name="saveRelationList" access="public" returntype="void" output="no" hint="I save a many-to-many relationship.">
+	<cfargument name="tablename" type="string" required="yes" hint="The table holding the many-to-many relationships.">
+	<cfargument name="keyfield" type="string" required="yes" hint="The field holding our key value for relationships.">
+	<cfargument name="keyvalue" type="string" required="yes" hint="The value of out primary field.">
+	<cfargument name="multifield" type="string" required="yes" hint="The field holding our many relationships for the given key.">
+	<cfargument name="multilist" type="string" required="yes" hint="The list of related values for our key.">
+	<cfargument name="reverse" type="boolean" default="false" hint="Should the reverse of the relationship by run as well (for self-joins)?s.">
+
+	<cfset var bTable = checkTable(arguments.tablename)><!--- Check whether table is loaded --->
+	<cfset var sKeyField = getField(Arguments.tablename,arguments.keyfield)>
+
+	<!--- Make sure a value is passed in for the primary key value --->
+	<cfif NOT Len(Trim(arguments.keyvalue))>
+		<cfset throwDMError("You must pass in a value for keyvalue of saveRelationList","NoKeyValueForSaveRelationList")>
+	</cfif>
+
+	<cfif arguments.reverse>
+		<cfinvoke method="saveRelationList">
+			<cfinvokeargument name="tablename" value="#arguments.tablename#">
+			<cfinvokeargument name="keyfield" value="#arguments.multifield#">
+			<cfinvokeargument name="keyvalue" value="#arguments.keyvalue#">
+			<cfinvokeargument name="multifield" value="#arguments.keyfield#">
+			<cfinvokeargument name="multilist" value="#arguments.multilist#">
+		</cfinvoke>
+	</cfif>
+
+	<cf_DMQuery>
+		DECLARE @list AS varchar(max) = <cf_DMParam value="#Arguments.multilist#" cfsqltype="CF_SQL_LONGVARCHAR">;
+		WITH CTE_Target (<cf_DMObject name="#Arguments.keyfield#">,<cf_DMObject name="#Arguments.multifield#">)
+		AS (
+					SELECT	<cf_DMObject name="#Arguments.keyfield#">,
+							<cf_DMObject name="#Arguments.multifield#">
+					FROM	<cf_DMObject name="#Arguments.tablename#">
+					WHERE	<cf_DMObject name="#Arguments.keyfield#"> = <cf_DMParam name="#Arguments.keyfield#" value="#Arguments.keyvalue#" cfsqltype="#sKeyField.CF_Datatype#">
+		)
+		MERGE		CTE_Target AS TARGET
+		USING		(
+						SELECT
+								<cf_DMParam name="#Arguments.keyfield#" value="#Arguments.keyvalue#" cfsqltype="#sKeyField.CF_Datatype#"> AS <cf_DMObject name="#Arguments.keyfield#">,
+								value AS <cf_DMObject name="#Arguments.multifield#">
+						FROM	STRING_SPLIT(@list, ',')
+					) AS SOURCE
+			ON		TARGET.<cf_DMObject name="#Arguments.keyfield#"> = SOURCE.<cf_DMObject name="#Arguments.keyfield#">
+				AND	TARGET.<cf_DMObject name="#Arguments.multifield#"> = SOURCE.<cf_DMObject name="#Arguments.multifield#">
+		WHEN		NOT MATCHED BY TARGET
+			THEN	
+					INSERT (
+						<cf_DMObject name="#Arguments.keyfield#">,
+						<cf_DMObject name="#Arguments.multifield#">
+					)
+					VALUES (
+						SOURCE.<cf_DMObject name="#Arguments.keyfield#">,
+						SOURCE.<cf_DMObject name="#Arguments.multifield#">
+					)
+		WHEN		NOT MATCHED BY SOURCE
+			THEN	DELETE
+		;
+	</cf_DMQUery>
+
+	<cfset setCacheDate()>
+
+</cffunction>
+
 <cffunction name="cleanSQLArray" access="private" returntype="array" output="no" hint="I take a potentially nested SQL array and return a flat SQL array.">
 	<cfargument name="sqlarray" type="array" required="yes">
 
@@ -1113,8 +1176,9 @@
 	var name = "";
 	var isList = false;
 	var sNewParam = 0;
-	var jj = 0;
-	var vv = 0;
+	var type = "";
+	var type_str = "";
+	var val_str = "";
 
 	for ( ii=1; ii <= ArrayLen(aSQL); ii++ ) {
 		// Check for existing named parameters in SQL.
@@ -1146,7 +1210,7 @@
 						( sParams[aSQL[ii].name].value EQ aSQL[ii].value )
 					)
 				) {
-					throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match.");
+					throwDMError("Your query has multiple params named '#aSQL[ii].name#', but they do not all match (existing: #sParams[aSQL[ii].name].value#[#sParams[aSQL[ii].name].CFSQLTYPE#], current: #aSQL[ii].value#[#aSQL[ii].CFSQLTYPE#]).");
 				}
 			} else {
 				sParams[aSQL[ii].name] = aSQL[ii];
@@ -1170,32 +1234,23 @@
 	for ( ii in sParams ) {
 		if ( NOT StructKeyExists(sDeclares,ii) ) {
 			isList = ( isStruct(sParams[ii]) AND StructKeyExists(sParams[ii],"list") AND sParams[ii].list IS true );
-			if ( isList ) {
-				for ( jj = ListLen(sParams[ii].value); jj >= 1; jj-- ) {
-					vv = ListGetAt(sParams[ii].value,jj);
-					sNewParam = StructCopy(sParams[ii]);
-					StructDelete(sNewParam,"Name");
-					sNewParam["List"] = false;
-					sNewParam["Value"] = vv;
-					ArrayPrepend(aSQL,")");
-					ArrayPrepend(aSQL,StructCopy(sNewParam));
-					ArrayPrepend(aSQL," (");
-					if ( jj > 1 ) {
-						ArrayPrepend(aSQL,",");
-					}
-				}
-				str = "DECLARE @#ii# table (val #getDBDataType(sParams[ii].CFSQLTYPE)#";
-				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
-					str = "#str#(#sParams[ii].MaxLength#)";
-				}
-				str = "#str#) INSERT @#ii#(val) values";
-				ArrayPrepend(aSQL,str);
+			type = getDBDataType(sParams[ii].CFSQLTYPE);
+			if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
+				type_str = "#type#(#sParams[ii].MaxLength#)";
 			} else {
-				str = "DECLARE @#ii# #getDBDataType(sParams[ii].CFSQLTYPE)#";
-				if ( isStringType(getDBDataType(sParams[ii].CFSQLTYPE)) ) {
-					str = "#str#(#sParams[ii].MaxLength#)";
-				}
-				str = "#str# = ";
+				type_str = type;
+			}
+			if ( isList ) {
+				sNewParam = StructCopy(sParams[ii]);
+				StructDelete(sNewParam,"Name");
+				StructDelete(sNewParam,"list");
+				sNewParam["cfsqltype"] = "cf_sql_varchar";
+
+				ArrayPrepend(aSQL,", ',');");
+				ArrayPrepend(aSQL,StructCopy(sNewParam));
+				ArrayPrepend(aSQL,"DECLARE @#ii# TABLE(val #type_str#) INSERT INTO @#ii# (val) SELECT value AS val FROM STRING_SPLIT(");
+			} else {
+				str = "DECLARE @#ii# #type_str# = ";
 				ArrayPrepend(aSQL,"#chr(10)##chr(13)#");
 				ArrayPrepend(aSQL,sParams[ii]);
 				ArrayPrepend(aSQL,str);
